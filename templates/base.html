@@ -45,7 +45,17 @@
                         {% if user.profile.role == 'STUDENT' %}
                             <li class="nav-item">
                                 <a class="nav-link fw-medium text-primary" href="{% url 'dashboard:student_dashboard' %}">
-                                    <i class="bi bi-speedometer2 me-1"></i> Student Portal
+                                    <i class="bi bi-speedometer2 me-1"></i> Dashboard
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link fw-medium text-dark" href="{% url 'complaints:student_complaint_list' %}">
+                                    <i class="bi bi-list-ul me-1"></i> My Complaints
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link fw-medium text-success" href="{% url 'complaints:student_complaint_create' %}">
+                                    <i class="bi bi-plus-circle me-1"></i> Report Issue
                                 </a>
                             </li>
                         {% elif user.profile.role == 'STAFF' %}
