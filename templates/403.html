@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+
+{% block title %}403 Forbidden - Access Denied{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6 text-center">
+            <div class="card border-0 shadow-lg p-4 p-md-5 rounded-4">
+                <div class="mb-4">
+                    <span class="d-inline-flex align-items-center justify-content-center bg-danger bg-opacity-10 text-danger rounded-circle" style="width: 80px; height: 80px;">
+                        <i class="bi bi-shield-lock-fill display-4"></i>
+                    </span>
+                </div>
+                <h2 class="fw-bold text-dark mb-2">403 - Access Restricted</h2>
+                <p class="text-secondary mb-4">
+                    {{ message|default:"You do not have permission to access this resource with your current role." }}
+                </p>
+
+                <div class="p-3 bg-light rounded-3 text-start mb-4 border">
+                    <div class="small text-muted mb-1">Current User: <strong>{{ user.username }}</strong></div>
+                    <div class="small text-muted mb-1">Your Role: <span class="badge bg-secondary">{{ user.profile.get_role_display|default:"Unknown" }}</span></div>
+                    {% if allowed_roles %}
+                    <div class="small text-muted">Required Role(s): <span class="badge bg-primary">{{ allowed_roles|join:", " }}</span></div>
+                    {% endif %}
+                </div>
+
+                <div class="d-flex justify-content-center gap-3">
+                    <a href="{% url 'accounts:redirect_dashboard' %}" class="btn btn-primary px-4 rounded-pill fw-semibold">
+                        <i class="bi bi-speedometer2 me-1"></i> Go to My Dashboard
+                    </a>
+                    <a href="{% url 'home' %}" class="btn btn-outline-secondary px-4 rounded-pill">
+                        <i class="bi bi-house me-1"></i> Home
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

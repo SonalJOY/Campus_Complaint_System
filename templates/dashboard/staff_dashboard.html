@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+
+{% block title %}Staff Dashboard - Campus Complaints{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-3 border-bottom">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <h2 class="fw-bold mb-0">Maintenance Staff Portal</h2>
+                <span class="badge bg-warning text-dark rounded-pill">STAFF</span>
+            </div>
+            <p class="text-secondary mb-0">Welcome, {{ user.get_full_name|default:user.username }}! Review and action your assigned work orders.</p>
+        </div>
+        <div class="mt-3 mt-sm-0">
+            <span class="badge bg-light text-dark p-2 border">Staff ID: #{{ user.id }} &bull; Role: {{ user.profile.role }}</span>
+        </div>
+    </div>
+
+    <!-- Quick Stats Cards (Placeholder) -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm p-3 rounded-4 bg-white">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-semibold">ASSIGNED WORK ORDERS</div>
+                        <h3 class="fw-bold mb-0 text-dark">0</h3>
+                    </div>
+                    <div class="bg-warning bg-opacity-10 text-warning p-3 rounded-3 fs-4">
+                        <i class="bi bi-clipboard2-check"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm p-3 rounded-4 bg-white">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-semibold">UNDER REPAIR (IN PROGRESS)</div>
+                        <h3 class="fw-bold mb-0 text-info">0</h3>
+                    </div>
+                    <div class="bg-info bg-opacity-10 text-info p-3 rounded-3 fs-4">
+                        <i class="bi bi-tools"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm p-3 rounded-4 bg-white">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-semibold">RESOLVED BY ME</div>
+                        <h3 class="fw-bold mb-0 text-success">0</h3>
+                    </div>
+                    <div class="bg-success bg-opacity-10 text-success p-3 rounded-3 fs-4">
+                        <i class="bi bi-check2-all"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Area Placeholder -->
+    <div class="card border-0 shadow-sm rounded-4 p-4 text-center">
+        <div class="py-5">
+            <i class="bi bi-tools text-secondary fs-1 mb-3 d-block"></i>
+            <h4 class="fw-bold">Assigned Maintenance Tasks</h4>
+            <p class="text-secondary max-w-500 mx-auto mb-3">
+                Assigned work orders, status updating (ASSIGNED &rarr; IN_PROGRESS &rarr; RESOLVED), and mandatory resolution remark submission will be populated in <strong>Phase 5</strong>.
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

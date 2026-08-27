@@ -23,12 +23,18 @@
                 </p>
                 
                 <div class="d-flex flex-wrap justify-content-center gap-3 mt-4">
-                    <a href="#register" class="btn btn-primary btn-lg rounded-pill px-4 py-2 fw-semibold shadow" style="background-color: var(--brand-primary); border-color: var(--brand-primary);">
-                        <i class="bi bi-person-plus-fill me-2"></i> Register Account
-                    </a>
-                    <a href="#login" class="btn btn-outline-light btn-lg rounded-pill px-4 py-2 fw-semibold">
-                        <i class="bi bi-box-arrow-in-right me-2"></i> Portal Login
-                    </a>
+                    {% if user.is_authenticated %}
+                        <a href="{% url 'accounts:redirect_dashboard' %}" class="btn btn-primary btn-lg rounded-pill px-4 py-2 fw-semibold shadow" style="background-color: var(--brand-primary); border-color: var(--brand-primary);">
+                            <i class="bi bi-speedometer2 me-2"></i> Go to My Dashboard
+                        </a>
+                    {% else %}
+                        <a href="{% url 'accounts:register' %}" class="btn btn-primary btn-lg rounded-pill px-4 py-2 fw-semibold shadow" style="background-color: var(--brand-primary); border-color: var(--brand-primary);">
+                            <i class="bi bi-person-plus-fill me-2"></i> Register Student Account
+                        </a>
+                        <a href="{% url 'accounts:login' %}" class="btn btn-outline-light btn-lg rounded-pill px-4 py-2 fw-semibold">
+                            <i class="bi bi-box-arrow-in-right me-2"></i> Portal Sign In
+                        </a>
+                    {% endif %}
                 </div>
             </div>
         </div>

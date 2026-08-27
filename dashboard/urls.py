@@ -4,5 +4,7 @@ from . import views
 app_name = 'dashboard'
 
 urlpatterns = [
-    # Dashboard routes for roles will be expanded in later phases
+    path('student/', views.student_dashboard, name='student_dashboard'),
+    path('staff/', views.staff_dashboard, name='staff_dashboard'),
+    path('admin/', views.admin_dashboard, name='admin_dashboard'),
 ]
