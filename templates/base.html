@@ -1,0 +1,106 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Campus Complaint & Maintenance Management System{% endblock %}</title>
+
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+    <!-- Main Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-custom sticky-top">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center gap-2" href="{% url 'home' %}">
+                <span class="navbar-brand-badge"><i class="bi bi-tools"></i> CCMS</span>
+                <span class="fw-bold d-none d-sm-inline text-dark">Campus Complaints</span>
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain" aria-controls="navbarMain" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="navbarMain">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-3">
+                    <li class="nav-item">
+                        <a class="nav-link active fw-medium" href="{% url 'home' %}"><i class="bi bi-house me-1"></i> Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link fw-medium" href="#workflow"><i class="bi bi-diagram-3 me-1"></i> Workflow</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link fw-medium" href="#categories"><i class="bi bi-grid me-1"></i> Categories</a>
+                    </li>
+                </ul>
+
+                <!-- Auth Navigation (Placeholder for Phase 1, dynamic RBAC in Phase 2) -->
+                <div class="d-flex align-items-center gap-2">
+                    {% if user.is_authenticated %}
+                        <span class="text-secondary small me-2"><i class="bi bi-person-circle"></i> {{ user.username }}</span>
+                        <a href="{% url 'home' %}" class="btn btn-outline-danger btn-sm rounded-pill px-3">Logout</a>
+                    {% else %}
+                        <a href="#login" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-semibold">
+                            <i class="bi bi-box-arrow-in-right me-1"></i> Login
+                        </a>
+                        <a href="#register" class="btn btn-primary btn-sm rounded-pill px-3 fw-semibold shadow-sm" style="background-color: var(--brand-primary); border-color: var(--brand-primary);">
+                            <i class="bi bi-person-plus me-1"></i> Register
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Global Messages / Alerts -->
+    {% if messages %}
+    <div class="container mt-3">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show shadow-sm" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Page Content -->
+    <main>
+        {% block content %}
+        {% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer-custom mt-auto">
+        <div class="container">
+            <div class="row align-items-center gy-3">
+                <div class="col-md-6 text-center text-md-start">
+                    <p class="mb-1 fw-semibold text-white">Campus Complaint & Maintenance Management System</p>
+                    <p class="mb-0 text-secondary small">College Academic SE Project &bull; Standard Django Monolith</p>
+                </div>
+                <div class="col-md-6 text-center text-md-end text-secondary small">
+                    <span>Role-Based Access: Student &bull; Staff &bull; Admin</span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

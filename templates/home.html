@@ -1,0 +1,182 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Campus Complaint & Maintenance Management System{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-section">
+    <div class="container position-relative">
+        <div class="row align-items-center justify-content-center text-center">
+            <div class="col-lg-9 col-xl-8">
+                <span class="badge rounded-pill bg-primary bg-opacity-25 text-info px-3 py-2 mb-3 border border-info border-opacity-25">
+                    <i class="bi bi-mortarboard-fill me-1"></i> Campus Operations Platform
+                </span>
+                <h1 class="hero-title display-4 fw-extrabold mb-3">
+                    Campus Complaint & Maintenance Management System
+                </h1>
+                <p class="hero-tagline mb-3">
+                    Report. Track. Resolve.
+                </p>
+                <p class="hero-subtitle mb-4">
+                    A streamlined, transparent platform for reporting, assigning, and resolving college infrastructure and maintenance issues with complete accountability.
+                </p>
+                
+                <div class="d-flex flex-wrap justify-content-center gap-3 mt-4">
+                    <a href="#register" class="btn btn-primary btn-lg rounded-pill px-4 py-2 fw-semibold shadow" style="background-color: var(--brand-primary); border-color: var(--brand-primary);">
+                        <i class="bi bi-person-plus-fill me-2"></i> Register Account
+                    </a>
+                    <a href="#login" class="btn btn-outline-light btn-lg rounded-pill px-4 py-2 fw-semibold">
+                        <i class="bi bi-box-arrow-in-right me-2"></i> Portal Login
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Workflow Section -->
+<section id="workflow" class="py-5 bg-white">
+    <div class="container py-4">
+        <div class="text-center mb-5">
+            <span class="text-primary fw-bold text-uppercase small letter-spacing-1">Lifecycle State Machine</span>
+            <h2 class="fw-bold mt-1">How Campus Complaints Work</h2>
+            <p class="text-secondary max-w-600 mx-auto">
+                Every ticket moves through an auditable 4-stage transition sequence enforced strictly on the server:
+            </p>
+        </div>
+
+        <div class="row g-4">
+            <!-- Step 1: Student Reports -->
+            <div class="col-md-6 col-lg-3">
+                <div class="workflow-card">
+                    <span class="step-number">Step 1</span>
+                    <div class="step-icon-bubble bg-primary bg-opacity-10 text-primary">
+                        <i class="bi bi-file-earmark-plus-fill"></i>
+                    </div>
+                    <h5 class="fw-bold mb-2">Student Reports</h5>
+                    <div class="badge bg-secondary bg-opacity-10 text-secondary mb-3">Status: SUBMITTED</div>
+                    <p class="text-secondary small mb-0">
+                        Students submit complaints specifying category, location, priority, and optional photos of the issue.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Step 2: Admin Assigns -->
+            <div class="col-md-6 col-lg-3">
+                <div class="workflow-card">
+                    <span class="step-number">Step 2</span>
+                    <div class="step-icon-bubble bg-warning bg-opacity-10 text-warning">
+                        <i class="bi bi-person-check-fill"></i>
+                    </div>
+                    <h5 class="fw-bold mb-2">Admin Assigns</h5>
+                    <div class="badge bg-warning bg-opacity-10 text-warning mb-3">Status: ASSIGNED</div>
+                    <p class="text-secondary small mb-0">
+                        Campus Administrators review incoming complaints and assign the ticket to the qualified maintenance staff member.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Step 3: Staff Resolves -->
+            <div class="col-md-6 col-lg-3">
+                <div class="workflow-card">
+                    <span class="step-number">Step 3</span>
+                    <div class="step-icon-bubble bg-info bg-opacity-10 text-info">
+                        <i class="bi bi-wrench-adjustable"></i>
+                    </div>
+                    <h5 class="fw-bold mb-2">Staff Resolves</h5>
+                    <div class="badge bg-info bg-opacity-10 text-info mb-3">IN_PROGRESS &rarr; RESOLVED</div>
+                    <p class="text-secondary small mb-0">
+                        Assigned staff starts work and submits mandatory resolution remarks upon completing the maintenance task.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Step 4: Student Closes -->
+            <div class="col-md-6 col-lg-3">
+                <div class="workflow-card">
+                    <span class="step-number">Step 4</span>
+                    <div class="step-icon-bubble bg-success bg-opacity-10 text-success">
+                        <i class="bi bi-check-circle-fill"></i>
+                    </div>
+                    <h5 class="fw-bold mb-2">Student Closes</h5>
+                    <div class="badge bg-success bg-opacity-10 text-success mb-3">Status: CLOSED</div>
+                    <p class="text-secondary small mb-0">
+                        The reporting student (or administrator) verifies the physical fix and permanently closes the ticket.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Categories Section -->
+<section id="categories" class="py-5" style="background-color: #f8fafc;">
+    <div class="container py-3">
+        <div class="text-center mb-4">
+            <span class="text-primary fw-bold text-uppercase small">Maintenance Domains</span>
+            <h2 class="fw-bold mt-1">Supported Complaint Categories</h2>
+            <p class="text-secondary">Comprehensive coverage across all university facilities and departments.</p>
+        </div>
+
+        <div class="d-flex flex-wrap justify-content-center gap-3">
+            <div class="category-chip"><i class="bi bi-lightning-charge text-warning"></i> Electrical</div>
+            <div class="category-chip"><i class="bi bi-droplet text-primary"></i> Plumbing</div>
+            <div class="category-chip"><i class="bi bi-door-closed text-secondary"></i> Furniture</div>
+            <div class="category-chip"><i class="bi bi-wifi text-info"></i> IT / Network</div>
+            <div class="category-chip"><i class="bi bi-projector text-danger"></i> Classroom Equipment</div>
+            <div class="category-chip"><i class="bi bi-radioactive text-success"></i> Laboratory Equipment</div>
+            <div class="category-chip"><i class="bi bi-trash3 text-muted"></i> Cleanliness</div>
+            <div class="category-chip"><i class="bi bi-question-circle text-dark"></i> Other Facilities</div>
+        </div>
+    </div>
+</section>
+
+<!-- Roles & Access Overview -->
+<section class="py-5 bg-white border-top">
+    <div class="container py-3">
+        <div class="row align-items-center g-4">
+            <div class="col-lg-5">
+                <span class="text-primary fw-bold text-uppercase small">Role-Based Access Control</span>
+                <h2 class="fw-bold mt-1">Built for Campus Stakeholders</h2>
+                <p class="text-secondary">
+                    Granular permissions guarantee security and transparency at every step of complaint resolution.
+                </p>
+                <ul class="list-unstyled d-flex flex-column gap-2 mt-3">
+                    <li class="d-flex align-items-start gap-2">
+                        <i class="bi bi-check-circle-fill text-primary mt-1"></i>
+                        <span><strong>STUDENT:</strong> Submit issues, track real-time history, and close resolved tickets.</span>
+                    </li>
+                    <li class="d-flex align-items-start gap-2">
+                        <i class="bi bi-check-circle-fill text-info mt-1"></i>
+                        <span><strong>STAFF:</strong> Receive assigned work orders, update progress, and submit resolution proofs.</span>
+                    </li>
+                    <li class="d-flex align-items-start gap-2">
+                        <i class="bi bi-check-circle-fill text-warning mt-1"></i>
+                        <span><strong>ADMIN:</strong> Oversee all campus departments, assign staff, and analyze operational trends.</span>
+                    </li>
+                </ul>
+            </div>
+            <div class="col-lg-7">
+                <div class="card border-0 shadow-sm p-4 rounded-4" style="background: linear-gradient(135deg, #f8fafc, #edf2f7);">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <span class="badge bg-dark px-3 py-2 rounded-pill font-monospace"><i class="bi bi-hash"></i> CMP-000123</span>
+                        <span class="badge bg-warning text-dark px-3 py-2 rounded-pill"><i class="bi bi-clock-history"></i> IN_PROGRESS</span>
+                    </div>
+                    <h5 class="fw-bold mb-1">Projector not displaying HDMI signal in Room 302</h5>
+                    <p class="text-muted small mb-3"><i class="bi bi-geo-alt"></i> Block B, 3rd Floor, Classroom 302 &bull; <i class="bi bi-tag"></i> Classroom Equipment &bull; <span class="text-danger fw-semibold">HIGH</span></p>
+                    <div class="p-3 bg-white rounded-3 border mb-3">
+                        <div class="small fw-semibold text-secondary mb-1"><i class="bi bi-journal-text me-1"></i> Audit Trail History</div>
+                        <div class="small text-muted">&bull; <strong>Student:</strong> Submitted issue with photo</div>
+                        <div class="small text-muted">&bull; <strong>Admin:</strong> Assigned to Staff Member (IT Services)</div>
+                        <div class="small text-muted">&bull; <strong>Staff:</strong> Marked In Progress (Inspecting cable connection)</div>
+                    </div>
+                    <div class="d-flex justify-content-end gap-2">
+                        <button class="btn btn-sm btn-outline-secondary disabled">View Details</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
