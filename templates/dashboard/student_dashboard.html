@@ -168,6 +168,21 @@
                     </tbody>
                 </table>
             </div>
+
+            <!-- Lifecycle Status Chart Card for Student -->
+            <div class="p-3 border-top bg-light">
+                <div class="row align-items-center">
+                    <div class="col-md-7">
+                        <div class="small fw-bold text-dark mb-1"><i class="bi bi-pie-chart me-1 text-primary"></i> Your Complaint Resolution Pipeline</div>
+                        <div class="text-secondary small" style="font-size: 0.78rem;">Visual breakdown of your submitted reports across campus handling stages.</div>
+                    </div>
+                    <div class="col-md-5">
+                        <div style="height: 120px;" class="d-flex align-items-center justify-content-center">
+                            <canvas id="studentStatusChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
             {% else %}
             <!-- Empty State -->
             <div class="text-center py-5 px-3">
@@ -187,3 +202,41 @@
     </div>
 </div>
 {% endblock %}
+
+{% block extra_js %}
+{% if recent_complaints %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const statusData = JSON.parse('{{ status_chart_json|escapejs }}');
+    const ctx = document.getElementById('studentStatusChart');
+    if (ctx) {
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: statusData.labels,
+                datasets: [{
+                    data: statusData.data,
+                    backgroundColor: statusData.colors,
+                    borderWidth: 2,
+                    borderColor: '#ffffff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '65%',
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: { boxWidth: 10, padding: 6, font: { size: 9 } }
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
+{% endif %}
+{% endblock %}
+

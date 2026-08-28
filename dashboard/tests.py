@@ -573,3 +573,118 @@ class StaffModuleTests(TestCase):
             res = self.client.get(u)
             self.assertEqual(res.status_code, 403)
 
+
+class AnalyticsDashboardTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        import json
+        self.json = json
+
+        # Users
+        self.admin = User.objects.create_user(username='admin_analytics', password='password123', email='admin@test.com')
+        self.admin.profile.role = Profile.ROLE_ADMIN
+        self.admin.profile.save()
+
+        self.student = User.objects.create_user(username='student_analytics', password='password123', email='student@test.com')
+        self.student.profile.role = Profile.ROLE_STUDENT
+        self.student.profile.save()
+
+        self.staff = User.objects.create_user(username='staff_analytics', password='password123', email='staff@test.com')
+        self.staff.profile.role = Profile.ROLE_STAFF
+        self.staff.profile.save()
+
+        # Categories
+        self.cat_elec = Category.objects.create(name='Electrical')
+        self.cat_plumb = Category.objects.create(name='Plumbing')
+        self.cat_it = Category.objects.create(name='IT Hardware')
+
+        # Create Complaints with varied status & priority
+        # 1. Electrical / SUBMITTED / HIGH
+        Complaint.objects.create(
+            title="Broken switch", description="desc", category=self.cat_elec,
+            location="Room 1", priority=Complaint.PRIORITY_HIGH,
+            status=Complaint.STATUS_SUBMITTED, submitted_by=self.student
+        )
+        # 2. Electrical / ASSIGNED / URGENT
+        Complaint.objects.create(
+            title="Short circuit", description="desc", category=self.cat_elec,
+            location="Room 2", priority=Complaint.PRIORITY_URGENT,
+            status=Complaint.STATUS_ASSIGNED, submitted_by=self.student, assigned_to=self.staff
+        )
+        # 3. Plumbing / IN_PROGRESS / MEDIUM
+        Complaint.objects.create(
+            title="Leak pipe", description="desc", category=self.cat_plumb,
+            location="Room 3", priority=Complaint.PRIORITY_MEDIUM,
+            status=Complaint.STATUS_IN_PROGRESS, submitted_by=self.student, assigned_to=self.staff
+        )
+        # 4. IT Hardware / RESOLVED / LOW
+        Complaint.objects.create(
+            title="Mouse broken", description="desc", category=self.cat_it,
+            location="Lab 1", priority=Complaint.PRIORITY_LOW,
+            status=Complaint.STATUS_RESOLVED, submitted_by=self.student, assigned_to=self.staff
+        )
+
+    def test_admin_dashboard_chart_json_payloads(self):
+        """
+        Verify Chart.js JSON payloads match real database counts accurately.
+        """
+        self.client.login(username='admin_analytics', password='password123')
+        res = self.client.get(reverse('dashboard:admin_dashboard'))
+        self.assertEqual(res.status_code, 200)
+
+        # 1. Verify JSON exists in context
+        self.assertIn('category_chart_json', res.context)
+        self.assertIn('status_chart_json', res.context)
+        self.assertIn('priority_chart_json', res.context)
+
+        # 2. Parse Category Chart Data
+        cat_data = self.json.loads(res.context['category_chart_json'])
+        cat_map = dict(zip(cat_data['labels'], cat_data['data']))
+        self.assertEqual(cat_map.get('Electrical'), 2)
+        self.assertEqual(cat_map.get('Plumbing'), 1)
+        self.assertEqual(cat_map.get('IT Hardware'), 1)
+
+        # 3. Parse Status Chart Data
+        status_data = self.json.loads(res.context['status_chart_json'])
+        status_map = dict(zip(status_data['labels'], status_data['data']))
+        self.assertEqual(status_map.get('Submitted'), 1)
+        self.assertEqual(status_map.get('Assigned'), 1)
+        self.assertEqual(status_map.get('In Progress'), 1)
+        self.assertEqual(status_map.get('Resolved'), 1)
+        self.assertEqual(status_map.get('Closed'), 0)
+
+        # 4. Parse Priority Chart Data
+        priority_data = self.json.loads(res.context['priority_chart_json'])
+        priority_map = dict(zip(priority_data['labels'], priority_data['data']))
+        self.assertEqual(priority_map.get('Low'), 1)
+        self.assertEqual(priority_map.get('Medium'), 1)
+        self.assertEqual(priority_map.get('High'), 1)
+        self.assertEqual(priority_map.get('Urgent'), 1)
+
+    def test_dynamic_chart_update_on_data_change(self):
+        """
+        Confirm charts update dynamically when new records are added or state changes.
+        """
+        self.client.login(username='admin_analytics', password='password123')
+
+        # Add a new Plumbing / URGENT complaint
+        Complaint.objects.create(
+            title="Burst main pipe", description="Flooding", category=self.cat_plumb,
+            location="Basement", priority=Complaint.PRIORITY_URGENT,
+            status=Complaint.STATUS_SUBMITTED, submitted_by=self.student
+        )
+
+        res = self.client.get(reverse('dashboard:admin_dashboard'))
+        cat_data = self.json.loads(res.context['category_chart_json'])
+        cat_map = dict(zip(cat_data['labels'], cat_data['data']))
+        self.assertEqual(cat_map.get('Plumbing'), 2)  # incremented from 1 to 2
+
+        status_data = self.json.loads(res.context['status_chart_json'])
+        status_map = dict(zip(status_data['labels'], status_data['data']))
+        self.assertEqual(status_map.get('Submitted'), 2)  # incremented from 1 to 2
+
+        priority_data = self.json.loads(res.context['priority_chart_json'])
+        priority_map = dict(zip(priority_data['labels'], priority_data['data']))
+        self.assertEqual(priority_map.get('Urgent'), 2)  # incremented from 1 to 2
+
+

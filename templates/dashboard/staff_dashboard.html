@@ -197,6 +197,18 @@
 
         <!-- Recently Resolved History Sidebar (4 cols) -->
         <div class="col-lg-4">
+            <!-- Workload Distribution Chart Card -->
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4 p-3 bg-white">
+                <div class="d-flex justify-content-between align-items-center mb-2 px-2">
+                    <h6 class="fw-bold mb-0 text-dark">
+                        <i class="bi bi-pie-chart-fill text-warning me-2"></i>My Work Order Status
+                    </h6>
+                </div>
+                <div class="chart-container position-relative d-flex align-items-center justify-content-center" style="height: 180px;">
+                    <canvas id="staffStatusChart"></canvas>
+                </div>
+            </div>
+
             <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
                 <div class="card-header bg-white py-3 px-4 d-flex justify-content-between align-items-center border-bottom">
                     <div class="d-flex align-items-center gap-2">
@@ -249,3 +261,39 @@
 }
 </style>
 {% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const statusData = JSON.parse('{{ status_chart_json|escapejs }}');
+    const ctx = document.getElementById('staffStatusChart');
+    if (ctx) {
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: statusData.labels,
+                datasets: [{
+                    data: statusData.data,
+                    backgroundColor: statusData.colors,
+                    borderWidth: 2,
+                    borderColor: '#ffffff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '65%',
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: { boxWidth: 10, padding: 8, font: { size: 10 } }
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
+

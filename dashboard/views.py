@@ -1,3 +1,4 @@
+import json
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.models import User
@@ -42,6 +43,22 @@ def student_dashboard(request):
 
     recent_complaints = user_complaints.select_related('category', 'assigned_to').order_by('-created_at')[:6]
 
+    # Student personal status distribution chart data
+    status_counts = dict(
+        user_complaints.values_list('status').annotate(count=Count('id'))
+    )
+    status_chart_data = {
+        'labels': ['Submitted', 'Assigned', 'In Progress', 'Resolved', 'Closed'],
+        'data': [
+            status_counts.get(Complaint.STATUS_SUBMITTED, 0),
+            status_counts.get(Complaint.STATUS_ASSIGNED, 0),
+            status_counts.get(Complaint.STATUS_IN_PROGRESS, 0),
+            status_counts.get(Complaint.STATUS_RESOLVED, 0),
+            status_counts.get(Complaint.STATUS_CLOSED, 0),
+        ],
+        'colors': ['#dc3545', '#0d6efd', '#ffc107', '#0dcaf0', '#198754'],
+    }
+
     context = {
         'total_count': total_count,
         'pending_count': pending_count,
@@ -49,6 +66,7 @@ def student_dashboard(request):
         'resolved_count': resolved_count,
         'closed_count': closed_count,
         'recent_complaints': recent_complaints,
+        'status_chart_json': json.dumps(status_chart_data),
     }
     return render(request, 'dashboard/student_dashboard.html', context)
 
@@ -94,6 +112,21 @@ def staff_dashboard(request):
         status__in=[Complaint.STATUS_RESOLVED, Complaint.STATUS_CLOSED]
     ).select_related('category', 'submitted_by').order_by('-resolved_at', '-updated_at')[:5]
 
+    # Staff status breakdown chart
+    staff_status_counts = dict(
+        assigned_complaints.values_list('status').annotate(count=Count('id'))
+    )
+    status_chart_data = {
+        'labels': ['Assigned', 'In Progress', 'Resolved', 'Closed'],
+        'data': [
+            staff_status_counts.get(Complaint.STATUS_ASSIGNED, 0),
+            staff_status_counts.get(Complaint.STATUS_IN_PROGRESS, 0),
+            staff_status_counts.get(Complaint.STATUS_RESOLVED, 0),
+            staff_status_counts.get(Complaint.STATUS_CLOSED, 0),
+        ],
+        'colors': ['#0d6efd', '#ffc107', '#0dcaf0', '#198754'],
+    }
+
     context = {
         'total_assigned_count': total_assigned_count,
         'pending_assigned_count': pending_assigned_count,
@@ -103,6 +136,7 @@ def staff_dashboard(request):
         'high_priority_count': high_priority_count,
         'active_tasks': active_tasks,
         'recent_resolved': recent_resolved,
+        'status_chart_json': json.dumps(status_chart_data),
     }
     return render(request, 'dashboard/staff_dashboard.html', context)
 
@@ -336,7 +370,46 @@ def admin_dashboard(request):
     # Category breakdown stats
     categories_stats = Category.objects.annotate(
         complaint_count=Count('complaints')
-    ).order_by('-complaint_count')[:6]
+    ).order_by('-complaint_count')
+
+    # Chart 1: Complaints by Category
+    category_chart_data = {
+        'labels': [cat.name for cat in categories_stats if cat.complaint_count > 0] or [cat.name for cat in categories_stats[:6]],
+        'data': [cat.complaint_count for cat in categories_stats if cat.complaint_count > 0] or [0 for _ in categories_stats[:6]],
+    }
+
+    # Chart 2: Complaints by Status
+    status_counts = dict(
+        all_complaints.values_list('status').annotate(count=Count('id'))
+    )
+    status_config = [
+        (Complaint.STATUS_SUBMITTED, 'Submitted', '#dc3545'),
+        (Complaint.STATUS_ASSIGNED, 'Assigned', '#0d6efd'),
+        (Complaint.STATUS_IN_PROGRESS, 'In Progress', '#ffc107'),
+        (Complaint.STATUS_RESOLVED, 'Resolved', '#0dcaf0'),
+        (Complaint.STATUS_CLOSED, 'Closed', '#198754'),
+    ]
+    status_chart_data = {
+        'labels': [label for _, label, _ in status_config],
+        'data': [status_counts.get(st, 0) for st, _, _ in status_config],
+        'colors': [col for _, _, col in status_config],
+    }
+
+    # Chart 3: Priority Distribution
+    priority_counts = dict(
+        all_complaints.values_list('priority').annotate(count=Count('id'))
+    )
+    priority_config = [
+        (Complaint.PRIORITY_LOW, 'Low', '#6c757d'),
+        (Complaint.PRIORITY_MEDIUM, 'Medium', '#0d6efd'),
+        (Complaint.PRIORITY_HIGH, 'High', '#fd7e14'),
+        (Complaint.PRIORITY_URGENT, 'Urgent', '#dc3545'),
+    ]
+    priority_chart_data = {
+        'labels': [label for _, label, _ in priority_config],
+        'data': [priority_counts.get(pr, 0) for pr, _, _ in priority_config],
+        'colors': [col for _, _, col in priority_config],
+    }
 
     # Maintenance staff overview
     staff_members = User.objects.filter(
@@ -358,8 +431,11 @@ def admin_dashboard(request):
         'closed_count': closed_count,
         'unassigned_complaints': unassigned_complaints,
         'urgent_complaints': urgent_complaints,
-        'categories_stats': categories_stats,
+        'categories_stats': categories_stats[:6],
         'staff_members': staff_members,
+        'category_chart_json': json.dumps(category_chart_data),
+        'status_chart_json': json.dumps(status_chart_data),
+        'priority_chart_json': json.dumps(priority_chart_data),
     }
     return render(request, 'dashboard/admin_dashboard.html', context)
 
