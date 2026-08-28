@@ -81,7 +81,11 @@ def login_view(request):
                     
                     return redirect('accounts:redirect_dashboard')
             else:
-                form.add_error(None, "Invalid username/email or password. Please verify your credentials.")
+                user_match = User.objects.filter(username__iexact=identifier).first() or User.objects.filter(email__iexact=identifier).first()
+                if user_match and user_match.check_password(password) and not user_match.is_active:
+                    form.add_error(None, "This account is currently deactivated. Please contact campus administration.")
+                else:
+                    form.add_error(None, "Invalid username/email or password. Please verify your credentials.")
     else:
         form = LoginForm()
 

@@ -9,8 +9,11 @@ from .models import Category, Complaint, ComplaintHistory, InvalidStatusTransiti
 
 
 class ComplaintModelAndStateMachineTests(TestCase):
+    """
+    Unit tests for Complaint model, sequential ID generation, and strict lifecycle transitions.
+    """
     def setUp(self):
-        # Create users with different roles
+        # Users
         self.student = User.objects.create_user(username='student1', password='pass123')
         self.student.profile.role = Profile.ROLE_STUDENT
         self.student.profile.save()
@@ -31,13 +34,16 @@ class ComplaintModelAndStateMachineTests(TestCase):
         self.admin.profile.role = Profile.ROLE_ADMIN
         self.admin.profile.save()
 
-        # Create Category
+        # Category
         self.category_elec = Category.objects.create(
             name='Electrical',
             description='Power outlets, lighting, wiring issues'
         )
 
-    def test_complaint_id_auto_generation(self):
+    def test_complaint_id_auto_generation_and_initial_status(self):
+        """
+        Verify complaints get unique sequential IDs (CMP-000001, etc.) and start as SUBMITTED.
+        """
         c1 = Complaint.objects.create(
             title="Broken switch in Lab 1",
             description="Switch sparked and is dead",
@@ -58,8 +64,12 @@ class ComplaintModelAndStateMachineTests(TestCase):
         self.assertTrue(c2.complaint_id.startswith("CMP-"))
         self.assertNotEqual(c1.complaint_id, c2.complaint_id)
         self.assertEqual(c1.status, Complaint.STATUS_SUBMITTED)
+        self.assertIsNone(c1.assigned_to)
 
     def test_full_valid_state_machine_lifecycle(self):
+        """
+        Test valid chain: SUBMITTED -> ASSIGNED -> IN_PROGRESS -> RESOLVED -> CLOSED
+        """
         complaint = Complaint.objects.create(
             title="AC not cooling",
             description="AC fan runs but no cooling in seminar hall",
@@ -129,8 +139,76 @@ class ComplaintModelAndStateMachineTests(TestCase):
         self.assertEqual(history_records[3].new_status, Complaint.STATUS_CLOSED)
         self.assertEqual(history_records[3].changed_by, self.student)
 
+    def test_admin_can_close_resolved_complaint(self):
+        """
+        Verify administrators can also close a resolved complaint.
+        """
+        complaint = Complaint.objects.create(
+            title="Broken socket", description="Loose wire", category=self.category_elec,
+            location="Room 10", priority=Complaint.PRIORITY_MEDIUM, submitted_by=self.student
+        )
+        complaint.transition_to(Complaint.STATUS_ASSIGNED, user=self.admin, assigned_to_user=self.staff1)
+        complaint.transition_to(Complaint.STATUS_IN_PROGRESS, user=self.staff1)
+        complaint.transition_to(Complaint.STATUS_RESOLVED, user=self.staff1, remarks="Replaced socket unit")
+        
+        complaint.transition_to(Complaint.STATUS_CLOSED, user=self.admin, remarks="Closed by admin audit")
+        complaint.refresh_from_db()
+        self.assertEqual(complaint.status, Complaint.STATUS_CLOSED)
 
-class StudentModuleViewsTests(TestCase):
+    def test_invalid_transition_submitted_to_resolved_raises_error(self):
+        """
+        Illegal jump: SUBMITTED -> RESOLVED directly is rejected.
+        """
+        complaint = Complaint.objects.create(
+            title="Direct jump test", description="desc", category=self.category_elec,
+            location="Hall", priority=Complaint.PRIORITY_LOW, submitted_by=self.student
+        )
+        with self.assertRaises(InvalidStatusTransitionError):
+            complaint.transition_to(Complaint.STATUS_RESOLVED, user=self.staff1, remarks="Attempt direct fix")
+
+    def test_invalid_transition_student_cannot_start_work(self):
+        """
+        Illegal actor: Student trying ASSIGNED -> IN_PROGRESS is rejected.
+        """
+        complaint = Complaint.objects.create(
+            title="Student transition test", description="desc", category=self.category_elec,
+            location="Hall", priority=Complaint.PRIORITY_LOW, submitted_by=self.student
+        )
+        complaint.transition_to(Complaint.STATUS_ASSIGNED, user=self.admin, assigned_to_user=self.staff1)
+        
+        with self.assertRaises(InvalidStatusTransitionError):
+            complaint.transition_to(Complaint.STATUS_IN_PROGRESS, user=self.student)
+
+    def test_invalid_transition_staff_cannot_assign(self):
+        """
+        Illegal actor: Staff trying SUBMITTED -> ASSIGNED is rejected.
+        """
+        complaint = Complaint.objects.create(
+            title="Staff assign test", description="desc", category=self.category_elec,
+            location="Hall", priority=Complaint.PRIORITY_LOW, submitted_by=self.student
+        )
+        with self.assertRaises(InvalidStatusTransitionError):
+            complaint.transition_to(Complaint.STATUS_ASSIGNED, user=self.staff1, assigned_to_user=self.staff2)
+
+    def test_invalid_transition_resolved_requires_remarks(self):
+        """
+        Illegal transition: IN_PROGRESS -> RESOLVED without remarks is rejected.
+        """
+        complaint = Complaint.objects.create(
+            title="Remarks test", description="desc", category=self.category_elec,
+            location="Hall", priority=Complaint.PRIORITY_LOW, submitted_by=self.student
+        )
+        complaint.transition_to(Complaint.STATUS_ASSIGNED, user=self.admin, assigned_to_user=self.staff1)
+        complaint.transition_to(Complaint.STATUS_IN_PROGRESS, user=self.staff1)
+
+        with self.assertRaises(InvalidStatusTransitionError):
+            complaint.transition_to(Complaint.STATUS_RESOLVED, user=self.staff1, remarks="")
+
+
+class StudentViewsAndScopingTests(TestCase):
+    """
+    Test suite for Student views, validation, and IDOR protection.
+    """
     def setUp(self):
         self.client = Client()
 
@@ -165,33 +243,21 @@ class StudentModuleViewsTests(TestCase):
 
         # Create complaints for Alice
         Complaint.objects.create(
-            title="Sink leak",
-            description="Leaking sink",
-            category=self.category,
-            location="Washroom 1",
-            priority=Complaint.PRIORITY_MEDIUM,
-            status=Complaint.STATUS_SUBMITTED,
-            submitted_by=self.student_a
+            title="Sink leak", description="Leaking sink", category=self.category,
+            location="Washroom 1", priority=Complaint.PRIORITY_MEDIUM,
+            status=Complaint.STATUS_SUBMITTED, submitted_by=self.student_a
         )
         Complaint.objects.create(
-            title="Pipe burst",
-            description="High pressure pipe burst",
-            category=self.category,
-            location="Washroom 2",
-            priority=Complaint.PRIORITY_URGENT,
-            status=Complaint.STATUS_IN_PROGRESS,
-            submitted_by=self.student_a
+            title="Pipe burst", description="High pressure pipe burst", category=self.category,
+            location="Washroom 2", priority=Complaint.PRIORITY_URGENT,
+            status=Complaint.STATUS_IN_PROGRESS, submitted_by=self.student_a
         )
 
         # Create a complaint for Bob (should not count for Alice)
         Complaint.objects.create(
-            title="Bob's faucet",
-            description="Dripping faucet",
-            category=self.category,
-            location="Washroom 3",
-            priority=Complaint.PRIORITY_LOW,
-            status=Complaint.STATUS_SUBMITTED,
-            submitted_by=self.student_b
+            title="Bob's faucet", description="Dripping faucet", category=self.category,
+            location="Washroom 3", priority=Complaint.PRIORITY_LOW,
+            status=Complaint.STATUS_SUBMITTED, submitted_by=self.student_b
         )
 
         response = self.client.get(reverse('dashboard:student_dashboard'))
@@ -231,35 +297,36 @@ class StudentModuleViewsTests(TestCase):
         self.assertEqual(history_entry.new_status, Complaint.STATUS_SUBMITTED)
         self.assertEqual(history_entry.changed_by, self.student_a)
 
+    def test_required_fields_validation(self):
+        """
+        Verify empty complaint form submission fails validation with field-level errors.
+        """
+        self.client.login(username='student_alice', password='password123')
+        create_url = reverse('complaints:student_complaint_create')
+
+        response = self.client.post(create_url, data={})
+        self.assertEqual(response.status_code, 200)
+        self.assertFormError(response.context['form'], 'title', 'This field is required.')
+        self.assertFormError(response.context['form'], 'category', 'This field is required.')
+        self.assertFormError(response.context['form'], 'location', 'This field is required.')
+        self.assertFormError(response.context['form'], 'description', 'This field is required.')
+
     def test_student_list_scoping_and_search_filters(self):
         self.client.login(username='student_alice', password='password123')
 
         c1 = Complaint.objects.create(
-            title="Electrical spark in Lab 4",
-            description="Sparking wire",
-            category=self.category,
-            location="Lab 4",
-            priority=Complaint.PRIORITY_URGENT,
-            status=Complaint.STATUS_SUBMITTED,
+            title="Electrical spark in Lab 4", description="Sparking wire", category=self.category,
+            location="Lab 4", priority=Complaint.PRIORITY_URGENT, status=Complaint.STATUS_SUBMITTED,
             submitted_by=self.student_a
         )
         c2 = Complaint.objects.create(
-            title="Broken chair in Room 101",
-            description="Chair leg broken",
-            category=self.category,
-            location="Room 101",
-            priority=Complaint.PRIORITY_LOW,
-            status=Complaint.STATUS_CLOSED,
+            title="Broken chair in Room 101", description="Chair leg broken", category=self.category,
+            location="Room 101", priority=Complaint.PRIORITY_LOW, status=Complaint.STATUS_CLOSED,
             submitted_by=self.student_a
         )
-        # Bob's complaint
         c3 = Complaint.objects.create(
-            title="Bob's private complaint",
-            description="Confidential issue",
-            category=self.category,
-            location="Hostel 2",
-            priority=Complaint.PRIORITY_HIGH,
-            status=Complaint.STATUS_SUBMITTED,
+            title="Bob's private complaint", description="Confidential issue", category=self.category,
+            location="Hostel 2", priority=Complaint.PRIORITY_HIGH, status=Complaint.STATUS_SUBMITTED,
             submitted_by=self.student_b
         )
 
@@ -284,13 +351,9 @@ class StudentModuleViewsTests(TestCase):
         self.assertEqual(res_status.context['complaints'][0].complaint_id, c2.complaint_id)
 
     def test_student_cannot_view_others_complaint_detail(self):
-        # Alice tries to view Bob's complaint -> Expect 404
         bobs_complaint = Complaint.objects.create(
-            title="Bob's private ticket",
-            description="Secret",
-            category=self.category,
-            location="Hostel A",
-            submitted_by=self.student_b
+            title="Bob's private ticket", description="Secret", category=self.category,
+            location="Hostel A", submitted_by=self.student_b
         )
 
         self.client.login(username='student_alice', password='password123')
@@ -300,13 +363,9 @@ class StudentModuleViewsTests(TestCase):
 
     def test_student_can_close_resolved_complaint(self):
         complaint = Complaint.objects.create(
-            title="Broken tap",
-            description="Leaking",
-            category=self.category,
-            location="Block A",
-            submitted_by=self.student_a
+            title="Broken tap", description="Leaking", category=self.category,
+            location="Block A", submitted_by=self.student_a
         )
-        # Transition to ASSIGNED -> IN_PROGRESS -> RESOLVED
         complaint.transition_to('ASSIGNED', user=self.admin, assigned_to_user=self.staff)
         complaint.transition_to('IN_PROGRESS', user=self.staff)
         complaint.transition_to('RESOLVED', user=self.staff, remarks="Fixed tap washer.")
