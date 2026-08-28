@@ -1,0 +1,297 @@
+{% extends 'base.html' %}
+
+{% block title %}My Assigned Work Orders - Staff Portal{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-3 border-bottom gap-3">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <a href="{% url 'dashboard:staff_dashboard' %}" class="btn btn-outline-secondary btn-sm rounded-circle p-2 d-inline-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                    <i class="bi bi-arrow-left"></i>
+                </a>
+                <h2 class="fw-bold mb-0">Assigned Work Orders</h2>
+                <span class="badge bg-warning text-dark rounded-pill">STAFF</span>
+            </div>
+            <p class="text-secondary mb-0">
+                Work orders assigned to you for diagnosis, parts repair, and campus maintenance resolution.
+            </p>
+        </div>
+        <div>
+            <span class="badge bg-light text-dark border px-3 py-2 fs-6 rounded-pill">
+                <strong>{{ total_count }}</strong> Record{{ total_count|pluralize }}
+            </span>
+        </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <ul class="nav nav-pills mb-4 gap-2">
+        <li class="nav-item">
+            <a class="nav-link rounded-pill px-4 fw-semibold {% if tab == 'active' or not tab %}active bg-warning text-dark{% else %}bg-white border text-secondary{% endif %}" href="?tab=active{% if query %}&q={{ query }}{% endif %}">
+                <i class="bi bi-tools me-1"></i> Active Work Orders
+                <span class="badge {% if tab == 'active' or not tab %}bg-dark text-white{% else %}bg-secondary bg-opacity-10 text-secondary{% endif %} rounded-pill ms-1">
+                    {{ active_count }}
+                </span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link rounded-pill px-4 fw-semibold {% if tab == 'resolved' %}active bg-success text-white{% else %}bg-white border text-secondary{% endif %}" href="?tab=resolved{% if query %}&q={{ query }}{% endif %}">
+                <i class="bi bi-check2-circle me-1"></i> Resolved History
+                <span class="badge {% if tab == 'resolved' %}bg-white text-success{% else %}bg-secondary bg-opacity-10 text-secondary{% endif %} rounded-pill ms-1">
+                    {{ resolved_count }}
+                </span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link rounded-pill px-4 fw-semibold {% if tab == 'all' %}active bg-primary text-white{% else %}bg-white border text-secondary{% endif %}" href="?tab=all{% if query %}&q={{ query }}{% endif %}">
+                <i class="bi bi-collection me-1"></i> All Work Orders
+                <span class="badge {% if tab == 'all' %}bg-white text-primary{% else %}bg-secondary bg-opacity-10 text-secondary{% endif %} rounded-pill ms-1">
+                    {{ all_count }}
+                </span>
+            </a>
+        </li>
+    </ul>
+
+    <!-- Search and Multi-Filter Card -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <form method="GET" action="{% url 'dashboard:staff_complaint_list' %}" class="row g-3 align-items-end">
+                <input type="hidden" name="tab" value="{{ tab }}">
+
+                <!-- Search Input -->
+                <div class="col-lg-5 col-md-6">
+                    <label class="form-label small fw-semibold text-secondary mb-1">Search Keywords</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                        <input type="text" name="q" value="{{ query }}" class="form-control border-start-0 ps-0" placeholder="Ticket ID, title, student, location...">
+                    </div>
+                </div>
+
+                <!-- Status Filter -->
+                <div class="col-lg-3 col-md-3 col-6">
+                    <label class="form-label small fw-semibold text-secondary mb-1">Status</label>
+                    <select name="status" class="form-select">
+                        <option value="">All in this Tab</option>
+                        {% for val, label in status_choices %}
+                        <option value="{{ val }}" {% if status_filter == val %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Priority Filter -->
+                <div class="col-lg-2 col-md-3 col-6">
+                    <label class="form-label small fw-semibold text-secondary mb-1">Priority</label>
+                    <select name="priority" class="form-select">
+                        <option value="">All Priorities</option>
+                        {% for val, label in priority_choices %}
+                        <option value="{{ val }}" {% if priority_filter == val %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Category Filter -->
+                <div class="col-lg-2 col-md-4 col-6">
+                    <label class="form-label small fw-semibold text-secondary mb-1">Category</label>
+                    <select name="category" class="form-select">
+                        <option value="">All Categories</option>
+                        {% for cat in categories %}
+                        <option value="{{ cat.id }}" {% if category_filter == cat.id|stringformat:"s" %}selected{% endif %}>{{ cat.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Actions -->
+                <div class="col-12 d-flex gap-2 justify-content-end pt-2 border-top">
+                    {% if active_filters_count > 0 or query %}
+                    <a href="{% url 'dashboard:staff_complaint_list' %}?tab={{ tab }}" class="btn btn-outline-secondary rounded-pill px-3">
+                        <i class="bi bi-x-circle me-1"></i> Clear Filters
+                    </a>
+                    {% endif %}
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-semibold" style="background-color: var(--brand-primary); border-color: var(--brand-primary);">
+                        <i class="bi bi-funnel me-1"></i> Apply Filters
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Work Orders Data Table -->
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+        <div class="card-body p-0">
+            {% if complaints %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light small text-secondary">
+                        <tr>
+                            <th class="ps-4">Ticket ID</th>
+                            <th>Complaint Details</th>
+                            <th>Location</th>
+                            <th>Priority</th>
+                            <th>Status</th>
+                            <th>Reported By</th>
+                            <th>Assigned Date</th>
+                            <th class="text-end pe-4">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for complaint in complaints %}
+                        <tr>
+                            <!-- Ticket ID -->
+                            <td class="ps-4 font-monospace fw-bold text-primary">
+                                <a href="{% url 'dashboard:staff_complaint_detail' complaint.complaint_id %}" class="text-decoration-none">
+                                    #{{ complaint.complaint_id }}
+                                </a>
+                            </td>
+
+                            <!-- Title & Category -->
+                            <td>
+                                <a href="{% url 'dashboard:staff_complaint_detail' complaint.complaint_id %}" class="text-dark fw-semibold text-decoration-none d-block text-truncate" style="max-width: 240px;">
+                                    {{ complaint.title }}
+                                </a>
+                                <span class="badge bg-light text-secondary border font-monospace" style="font-size: 0.72rem;">
+                                    {{ complaint.category.name }}
+                                </span>
+                                {% if complaint.image %}
+                                <i class="bi bi-paperclip text-muted ms-1" title="Photo attached"></i>
+                                {% endif %}
+                            </td>
+
+                            <!-- Location -->
+                            <td class="small text-secondary text-truncate" style="max-width: 140px;">
+                                <i class="bi bi-geo-alt me-1 text-muted"></i>{{ complaint.location }}
+                            </td>
+
+                            <!-- Priority -->
+                            <td>
+                                {% if complaint.priority == 'URGENT' %}
+                                    <span class="badge bg-danger rounded-pill px-2 py-1"><i class="bi bi-fire me-1"></i>Urgent</span>
+                                {% elif complaint.priority == 'HIGH' %}
+                                    <span class="badge bg-warning text-dark rounded-pill px-2 py-1"><i class="bi bi-exclamation-triangle me-1"></i>High</span>
+                                {% elif complaint.priority == 'MEDIUM' %}
+                                    <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-2 py-1">Medium</span>
+                                {% else %}
+                                    <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-2 py-1">Low</span>
+                                {% endif %}
+                            </td>
+
+                            <!-- Status -->
+                            <td>
+                                {% if complaint.status == 'ASSIGNED' %}
+                                    <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-2 py-1">
+                                        <i class="bi bi-hourglass me-1"></i>Assigned
+                                    </span>
+                                {% elif complaint.status == 'IN_PROGRESS' %}
+                                    <span class="badge bg-warning bg-opacity-10 text-warning rounded-pill px-2 py-1">
+                                        <i class="bi bi-gear-wide-connected me-1"></i>In Progress
+                                    </span>
+                                {% elif complaint.status == 'RESOLVED' %}
+                                    <span class="badge bg-info bg-opacity-10 text-info rounded-pill px-2 py-1">
+                                        <i class="bi bi-check2-circle me-1"></i>Resolved
+                                    </span>
+                                {% elif complaint.status == 'CLOSED' %}
+                                    <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2 py-1">
+                                        <i class="bi bi-shield-check me-1"></i>Closed
+                                    </span>
+                                {% endif %}
+                            </td>
+
+                            <!-- Submitter -->
+                            <td class="small">
+                                <div class="fw-medium text-dark">{{ complaint.submitted_by.get_full_name|default:complaint.submitted_by.username }}</div>
+                                <div class="text-muted" style="font-size: 0.75rem;">{{ complaint.submitted_by.email }}</div>
+                            </td>
+
+                            <!-- Date -->
+                            <td class="small text-secondary text-nowrap">
+                                {{ complaint.created_at|date:"M d, Y" }}
+                            </td>
+
+                            <!-- Action -->
+                            <td class="text-end pe-4">
+                                <a href="{% url 'dashboard:staff_complaint_detail' complaint.complaint_id %}" class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-semibold">
+                                    {% if complaint.status == 'ASSIGNED' %}
+                                        <i class="bi bi-play-circle me-1"></i> Start Work
+                                    {% elif complaint.status == 'IN_PROGRESS' %}
+                                        <i class="bi bi-check-circle me-1"></i> Resolve
+                                    {% else %}
+                                        View &rarr;
+                                    {% endif %}
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if page_obj.has_other_pages %}
+            <div class="card-footer bg-white py-3 px-4 d-flex justify-content-between align-items-center border-top">
+                <div class="small text-secondary">
+                    Showing page <strong>{{ page_obj.number }}</strong> of <strong>{{ page_obj.paginator.num_pages }}</strong>
+                </div>
+                <nav aria-label="Staff work orders pagination">
+                    <ul class="pagination pagination-sm mb-0">
+                        {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link rounded-start-pill" href="?page={{ page_obj.previous_page_number }}&tab={{ tab }}{% if query %}&q={{ query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if priority_filter %}&priority={{ priority_filter }}{% endif %}{% if category_filter %}&category={{ category_filter }}{% endif %}">
+                                &laquo; Prev
+                            </a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled"><span class="page-link rounded-start-pill">&laquo; Prev</span></li>
+                        {% endif %}
+
+                        {% for num in page_obj.paginator.page_range %}
+                            {% if page_obj.number == num %}
+                            <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ num }}&tab={{ tab }}{% if query %}&q={{ query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if priority_filter %}&priority={{ priority_filter }}{% endif %}{% if category_filter %}&category={{ category_filter }}{% endif %}">
+                                    {{ num }}
+                                </a>
+                            </li>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link rounded-end-pill" href="?page={{ page_obj.next_page_number }}&tab={{ tab }}{% if query %}&q={{ query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if priority_filter %}&priority={{ priority_filter }}{% endif %}{% if category_filter %}&category={{ category_filter }}{% endif %}">
+                                Next &raquo;
+                            </a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled"><span class="page-link rounded-end-pill">Next &raquo;</span></li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+            {% endif %}
+
+            {% else %}
+            <div class="text-center py-5">
+                <div class="bg-light rounded-circle d-inline-flex p-4 mb-3 text-secondary">
+                    <i class="bi bi-tools fs-1"></i>
+                </div>
+                <h5 class="fw-bold mb-2">No Work Orders Found</h5>
+                <p class="text-secondary mb-3 max-w-500 mx-auto">
+                    {% if tab == 'active' or not tab %}
+                    You have no active work orders matching the selected filters.
+                    {% elif tab == 'resolved' %}
+                    No previously resolved complaints in your history matching the search criteria.
+                    {% else %}
+                    No records found in your assigned work orders.
+                    {% endif %}
+                </p>
+                {% if active_filters_count > 0 or query %}
+                <a href="{% url 'dashboard:staff_complaint_list' %}?tab={{ tab }}" class="btn btn-outline-primary rounded-pill px-4">
+                    Reset Filters
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

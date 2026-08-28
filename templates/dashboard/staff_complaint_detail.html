@@ -1,0 +1,306 @@
+{% extends 'base.html' %}
+
+{% block title %}Work Order #{{ complaint.complaint_id }} - Staff Portal{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Breadcrumb & Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-3 border-bottom gap-3">
+        <div class="d-flex align-items-center gap-2">
+            <a href="{% url 'dashboard:staff_complaint_list' %}" class="btn btn-outline-secondary btn-sm rounded-circle p-2 d-inline-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                <i class="bi bi-arrow-left"></i>
+            </a>
+            <div>
+                <div class="d-flex align-items-center gap-2">
+                    <h2 class="fw-bold mb-0">Work Order #{{ complaint.complaint_id }}</h2>
+                    <span class="badge bg-warning text-dark rounded-pill">STAFF DISPATCH</span>
+                </div>
+                <p class="text-secondary mb-0 small">
+                    Assigned on {{ complaint.created_at|date:"F d, Y \a\t H:i" }} &bull; Last updated {{ complaint.updated_at|timesince }} ago
+                </p>
+            </div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <!-- Current Status Badge -->
+            {% if complaint.status == 'ASSIGNED' %}
+                <span class="badge bg-primary fs-6 px-3 py-2 rounded-pill"><i class="bi bi-hourglass me-1"></i>Assigned to You</span>
+            {% elif complaint.status == 'IN_PROGRESS' %}
+                <span class="badge bg-warning text-dark fs-6 px-3 py-2 rounded-pill"><i class="bi bi-gear-wide-connected me-1"></i>Under Repair (In Progress)</span>
+            {% elif complaint.status == 'RESOLVED' %}
+                <span class="badge bg-info fs-6 px-3 py-2 rounded-pill"><i class="bi bi-check2-circle me-1"></i>Resolved</span>
+            {% elif complaint.status == 'CLOSED' %}
+                <span class="badge bg-success fs-6 px-3 py-2 rounded-pill"><i class="bi bi-shield-check me-1"></i>Closed</span>
+            {% endif %}
+
+            <!-- Priority Badge -->
+            {% if complaint.priority == 'URGENT' %}
+                <span class="badge bg-danger fs-6 px-3 py-2 rounded-pill"><i class="bi bi-fire me-1"></i>Urgent</span>
+            {% elif complaint.priority == 'HIGH' %}
+                <span class="badge bg-warning text-dark fs-6 px-3 py-2 rounded-pill"><i class="bi bi-exclamation-triangle me-1"></i>High</span>
+            {% elif complaint.priority == 'MEDIUM' %}
+                <span class="badge bg-primary bg-opacity-10 text-primary border border-primary fs-6 px-3 py-2 rounded-pill">Medium</span>
+            {% else %}
+                <span class="badge bg-secondary bg-opacity-10 text-secondary border fs-6 px-3 py-2 rounded-pill">Low</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Left Column: Details & Audit Trail (7 cols) -->
+        <div class="col-lg-7">
+            <!-- Complaint Overview Card -->
+            <div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden">
+                <div class="card-header bg-white py-3 px-4 border-bottom">
+                    <h5 class="fw-bold mb-0 text-dark">
+                        <i class="bi bi-tools text-warning me-2"></i>{{ complaint.title }}
+                    </h5>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row g-3 mb-4">
+                        <div class="col-sm-6">
+                            <div class="text-muted small fw-semibold">MAINTENANCE CATEGORY</div>
+                            <div class="fw-bold text-dark fs-6 mt-1">
+                                <span class="badge bg-light text-dark border font-monospace px-3 py-2 rounded-pill">
+                                    <i class="bi bi-grid-fill me-1 text-primary"></i>{{ complaint.category.name }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="text-muted small fw-semibold">FACILITY LOCATION</div>
+                            <div class="fw-semibold text-dark mt-1">
+                                <i class="bi bi-geo-alt-fill text-danger me-1"></i>{{ complaint.location }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="mb-4">
+                        <label class="text-muted small fw-semibold d-block mb-1">STUDENT ISSUE REPORT</label>
+                        <div class="p-3 bg-light rounded-3 text-secondary" style="white-space: pre-wrap; line-height: 1.6;">
+                            {{ complaint.description }}
+                        </div>
+                    </div>
+
+                    <!-- Submitter Metadata Card -->
+                    <div class="p-3 border rounded-3 bg-white mb-3">
+                        <div class="text-muted small fw-semibold mb-2">REPORTED BY STUDENT</div>
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center fw-bold fs-5" style="width: 44px; height: 44px;">
+                                {{ complaint.submitted_by.first_name|first|default:complaint.submitted_by.username|first|upper }}
+                            </div>
+                            <div>
+                                <div class="fw-bold text-dark">{{ complaint.submitted_by.get_full_name|default:complaint.submitted_by.username }}</div>
+                                <div class="text-secondary small">
+                                    <i class="bi bi-envelope me-1"></i>{{ complaint.submitted_by.email }}
+                                    {% if complaint.submitted_by.profile.phone %}
+                                    &bull; <i class="bi bi-telephone me-1"></i>{{ complaint.submitted_by.profile.phone }}
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Photo Proof (if uploaded) -->
+                    {% if complaint.image %}
+                    <div class="mt-4 pt-3 border-top">
+                        <label class="text-muted small fw-semibold d-block mb-2">ATTACHED DAMAGE PHOTO</label>
+                        <div class="d-inline-block position-relative">
+                            <img src="{{ complaint.image.url }}" alt="Complaint Photo" class="img-thumbnail rounded-3 shadow-sm" style="max-height: 220px; cursor: pointer;" data-bs-toggle="modal" data-bs-target="#imageModal">
+                            <div class="small text-muted mt-1"><i class="bi bi-zoom-in me-1"></i>Click photo to enlarge</div>
+                        </div>
+                    </div>
+
+                    <!-- Lightbox Modal -->
+                    <div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered modal-lg">
+                            <div class="modal-content border-0 shadow rounded-4 overflow-hidden">
+                                <div class="modal-header">
+                                    <h6 class="modal-title fw-bold" id="imageModalLabel">Damage Proof - #{{ complaint.complaint_id }}</h6>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body p-0 text-center bg-dark">
+                                    <img src="{{ complaint.image.url }}" class="img-fluid" alt="Full Image Proof">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Full Audit History Timeline -->
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+                <div class="card-header bg-white py-3 px-4 border-bottom d-flex justify-content-between align-items-center">
+                    <h5 class="fw-bold mb-0 text-dark">
+                        <i class="bi bi-clock-history text-primary me-2"></i>Audit History Trail
+                    </h5>
+                    <span class="badge bg-light text-secondary border font-monospace">{{ history|length }} Event{{ history|length|pluralize }}</span>
+                </div>
+                <div class="card-body p-4">
+                    {% if history %}
+                    <div class="timeline position-relative ps-4">
+                        {% for event in history %}
+                        <div class="timeline-item position-relative pb-4 mb-2">
+                            <div class="timeline-bullet position-absolute bg-white border border-warning border-3 rounded-circle" style="left: -33px; top: 0; width: 18px; height: 18px;"></div>
+                            
+                            <div class="d-flex flex-wrap justify-content-between align-items-center mb-1">
+                                <div class="fw-bold text-dark">
+                                    {% if event.old_status == event.new_status %}
+                                        <span class="badge bg-secondary bg-opacity-10 text-secondary border font-monospace">UPDATED</span>
+                                    {% else %}
+                                        <span class="badge bg-light text-secondary border font-monospace">{{ event.old_status }}</span>
+                                        <i class="bi bi-arrow-right mx-1 text-primary"></i>
+                                        <span class="badge bg-primary font-monospace">{{ event.new_status }}</span>
+                                    {% endif %}
+                                </div>
+                                <div class="small text-muted">
+                                    <i class="bi bi-clock me-1"></i>{{ event.changed_at|date:"M d, Y \a\t H:i" }}
+                                </div>
+                            </div>
+
+                            <div class="small text-secondary mb-1">
+                                Action by: <strong>{{ event.changed_by.get_full_name|default:event.changed_by.username|default:"System" }}</strong>
+                                {% if event.changed_by.profile.role %}
+                                <span class="badge {% if event.changed_by.profile.role == 'ADMIN' %}bg-danger{% elif event.changed_by.profile.role == 'STAFF' %}bg-warning text-dark{% else %}bg-primary{% endif %} rounded-pill ms-1" style="font-size: 0.65rem;">
+                                    {{ event.changed_by.profile.role }}
+                                </span>
+                                {% endif %}
+                            </div>
+
+                            {% if event.remarks %}
+                            <div class="p-2 px-3 bg-light rounded-2 text-dark small border-start border-warning border-3 mt-1">
+                                <em>"{{ event.remarks }}"</em>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-3 text-muted small">No audit history records available.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Staff Action & Lifecycle Transitions (5 cols) -->
+        <div class="col-lg-5">
+            <!-- Stage 1: If Status is ASSIGNED (Start Work Order) -->
+            {% if complaint.status == 'ASSIGNED' %}
+            <div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden border-top border-primary border-4">
+                <div class="card-header bg-white py-3 px-4 border-bottom">
+                    <h5 class="fw-bold mb-0 text-dark">
+                        <i class="bi bi-play-circle-fill text-primary me-2"></i>Start Work Order
+                    </h5>
+                    <p class="text-secondary small mb-0 mt-1">
+                        Move this task into active repair status (<code>IN_PROGRESS</code>).
+                    </p>
+                </div>
+                <div class="card-body p-4">
+                    <div class="alert alert-primary small mb-3">
+                        <i class="bi bi-info-circle-fill me-1"></i>
+                        This work order is assigned to you and waiting to be started. Clicking <strong>Start Work Order</strong> will notify the student and operations administrator that repair work is underway.
+                    </div>
+                    <form method="POST" action="{% url 'dashboard:staff_complaint_start_work' complaint.complaint_id %}">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold text-dark">Initial Diagnostics / Operational Notes (Optional)</label>
+                            <textarea name="remarks" class="form-control" rows="2" placeholder="e.g. Inspecting site, gathering circuit components..."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 py-2 rounded-pill fw-semibold shadow-sm" style="background-color: var(--brand-primary); border-color: var(--brand-primary);">
+                            <i class="bi bi-play-fill me-1"></i> Begin Active Work (IN_PROGRESS)
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Stage 2: If Status is IN_PROGRESS (Mark as Resolved) -->
+            {% elif complaint.status == 'IN_PROGRESS' %}
+            <div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden border-top border-warning border-4">
+                <div class="card-header bg-white py-3 px-4 border-bottom">
+                    <h5 class="fw-bold mb-0 text-dark">
+                        <i class="bi bi-check2-circle text-warning me-2"></i>Submit Work Resolution
+                    </h5>
+                    <p class="text-secondary small mb-0 mt-1">
+                        Complete this repair and mark as <code>RESOLVED</code>.
+                    </p>
+                </div>
+                <div class="card-body p-4">
+                    <div class="alert alert-warning text-dark small mb-3">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                        <strong>Mandatory Resolution Remarks:</strong> You must describe the specific repairs performed, components replaced, or safety tests conducted before marking this complaint as resolved.
+                    </div>
+                    <form method="POST" action="{% url 'dashboard:staff_complaint_resolve' complaint.complaint_id %}">
+                        {% csrf_token %}
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold text-dark small">
+                                Resolution Remarks & Fix Summary <span class="text-danger">*</span>
+                            </label>
+                            {{ resolve_form.remarks }}
+                            <div class="form-text small">{{ resolve_form.remarks.help_text }}</div>
+                        </div>
+                        <button type="submit" class="btn btn-success w-100 py-2 rounded-pill fw-semibold shadow-sm" onclick="return confirm('Confirm marking this work order as RESOLVED?');">
+                            <i class="bi bi-check-all me-1"></i> Mark as RESOLVED
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Stage 3: If Status is RESOLVED (Awaiting Verification) -->
+            {% elif complaint.status == 'RESOLVED' %}
+            <div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden border-top border-info border-4">
+                <div class="card-header bg-white py-3 px-4 border-bottom">
+                    <h5 class="fw-bold mb-0 text-dark">
+                        <i class="bi bi-check2-all text-info me-2"></i>Work Completed (Resolved)
+                    </h5>
+                </div>
+                <div class="card-body p-4">
+                    <div class="alert alert-info d-flex align-items-start mb-0" role="alert">
+                        <i class="bi bi-info-circle-fill fs-4 me-2"></i>
+                        <div>
+                            <strong>Resolution Submitted!</strong>
+                            <div class="small mt-1">
+                                Resolved on {{ complaint.resolved_at|date:"F d, Y \a\t H:i"|default:complaint.updated_at|date:"F d, Y" }}.
+                            </div>
+                            <div class="small text-secondary mt-2">
+                                Submitting student and campus administration have been notified to verify the fix and close the ticket.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stage 4: If Status is CLOSED -->
+            {% elif complaint.status == 'CLOSED' %}
+            <div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden border-top border-success border-4">
+                <div class="card-header bg-white py-3 px-4 border-bottom">
+                    <h5 class="fw-bold mb-0 text-dark">
+                        <i class="bi bi-shield-check text-success me-2"></i>Work Order Closed
+                    </h5>
+                </div>
+                <div class="card-body p-4">
+                    <div class="alert alert-success d-flex align-items-center mb-0" role="alert">
+                        <i class="bi bi-check-circle-fill fs-4 me-2"></i>
+                        <div>
+                            <strong>Ticket Verified & Officially Closed</strong>
+                            <div class="small">Closed on {{ complaint.closed_at|date:"M d, Y \a\t H:i"|default:complaint.updated_at|date:"M d, Y" }}.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.timeline::before {
+    content: '';
+    position: absolute;
+    top: 6px;
+    bottom: 0;
+    left: 8px;
+    width: 2px;
+    background-color: #e2e8f0;
+}
+</style>
+{% endblock %}

@@ -2,12 +2,18 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.models import User
 from django.core.paginator import Paginator
+from django.db import models
 from django.db.models import Q, Count
 from django.utils import timezone
 
 from accounts.decorators import student_required, staff_required, admin_required
 from complaints.models import Complaint, Category, ComplaintHistory, InvalidStatusTransitionError
-from complaints.forms import AdminComplaintManageForm, AdminForceCloseForm
+from complaints.forms import (
+    AdminComplaintManageForm,
+    AdminForceCloseForm,
+    StaffProgressForm,
+    StaffResolutionForm,
+)
 from .forms import CategoryForm
 
 
@@ -47,12 +53,251 @@ def student_dashboard(request):
     return render(request, 'dashboard/student_dashboard.html', context)
 
 
+# ==============================================================================
+# STAFF MODULE VIEWS
+# ==============================================================================
+
 @staff_required
 def staff_dashboard(request):
     """
-    Staff dashboard placeholder (Phase 5/6 assigned tasks portal).
+    Maintenance Staff Portal dashboard.
+    Displays metrics and work orders strictly assigned to the logged-in staff technician.
     """
-    return render(request, 'dashboard/staff_dashboard.html')
+    assigned_complaints = Complaint.objects.filter(assigned_to=request.user)
+
+    total_assigned_count = assigned_complaints.count()
+    pending_assigned_count = assigned_complaints.filter(status=Complaint.STATUS_ASSIGNED).count()
+    in_progress_count = assigned_complaints.filter(status=Complaint.STATUS_IN_PROGRESS).count()
+    resolved_count = assigned_complaints.filter(status=Complaint.STATUS_RESOLVED).count()
+    closed_count = assigned_complaints.filter(status=Complaint.STATUS_CLOSED).count()
+    high_priority_count = assigned_complaints.filter(
+        priority__in=[Complaint.PRIORITY_HIGH, Complaint.PRIORITY_URGENT],
+        status__in=[Complaint.STATUS_ASSIGNED, Complaint.STATUS_IN_PROGRESS]
+    ).count()
+
+    # Active tasks requiring technician action
+    active_tasks = assigned_complaints.filter(
+        status__in=[Complaint.STATUS_ASSIGNED, Complaint.STATUS_IN_PROGRESS]
+    ).select_related('category', 'submitted_by').order_by(
+        models.Case(
+            models.When(priority=Complaint.PRIORITY_URGENT, then=models.Value(1)),
+            models.When(priority=Complaint.PRIORITY_HIGH, then=models.Value(2)),
+            models.When(priority=Complaint.PRIORITY_MEDIUM, then=models.Value(3)),
+            default=models.Value(4),
+            output_field=models.IntegerField(),
+        ),
+        '-created_at'
+    )[:8]
+
+    # Recently resolved work orders
+    recent_resolved = assigned_complaints.filter(
+        status__in=[Complaint.STATUS_RESOLVED, Complaint.STATUS_CLOSED]
+    ).select_related('category', 'submitted_by').order_by('-resolved_at', '-updated_at')[:5]
+
+    context = {
+        'total_assigned_count': total_assigned_count,
+        'pending_assigned_count': pending_assigned_count,
+        'in_progress_count': in_progress_count,
+        'resolved_count': resolved_count,
+        'closed_count': closed_count,
+        'high_priority_count': high_priority_count,
+        'active_tasks': active_tasks,
+        'recent_resolved': recent_resolved,
+    }
+    return render(request, 'dashboard/staff_dashboard.html', context)
+
+
+@staff_required
+def staff_complaint_list(request):
+    """
+    Searchable and filterable task registry for maintenance technicians.
+    Strictly scoped to complaints where assigned_to == request.user.
+    Includes dedicated tabs for Active Work Orders vs Previously Resolved History.
+    """
+    assigned_qs = Complaint.objects.filter(assigned_to=request.user).select_related('category', 'submitted_by').order_by('-created_at')
+
+    # Tab handling: active (default) vs resolved vs all
+    tab = request.GET.get('tab', 'active').strip()
+
+    # Total counts for tab headers
+    active_count = assigned_qs.filter(status__in=[Complaint.STATUS_ASSIGNED, Complaint.STATUS_IN_PROGRESS]).count()
+    resolved_count = assigned_qs.filter(status__in=[Complaint.STATUS_RESOLVED, Complaint.STATUS_CLOSED]).count()
+    all_count = assigned_qs.count()
+
+    if tab == 'resolved':
+        complaints_qs = assigned_qs.filter(status__in=[Complaint.STATUS_RESOLVED, Complaint.STATUS_CLOSED])
+    elif tab == 'all':
+        complaints_qs = assigned_qs
+    else:  # 'active'
+        complaints_qs = assigned_qs.filter(status__in=[Complaint.STATUS_ASSIGNED, Complaint.STATUS_IN_PROGRESS])
+
+    # Search Query
+    query = request.GET.get('q', '').strip()
+    if query:
+        complaints_qs = complaints_qs.filter(
+            Q(complaint_id__icontains=query) |
+            Q(title__icontains=query) |
+            Q(description__icontains=query) |
+            Q(location__icontains=query) |
+            Q(submitted_by__username__icontains=query) |
+            Q(submitted_by__first_name__icontains=query) |
+            Q(submitted_by__last_name__icontains=query)
+        )
+
+    # Status Filter
+    status_filter = request.GET.get('status', '').strip()
+    if status_filter:
+        complaints_qs = complaints_qs.filter(status=status_filter)
+
+    # Priority Filter
+    priority_filter = request.GET.get('priority', '').strip()
+    if priority_filter:
+        complaints_qs = complaints_qs.filter(priority=priority_filter)
+
+    # Category Filter
+    category_filter = request.GET.get('category', '').strip()
+    if category_filter and category_filter.isdigit():
+        complaints_qs = complaints_qs.filter(category_id=int(category_filter))
+
+    # Pagination: 10 per page
+    paginator = Paginator(complaints_qs, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    categories = Category.objects.all().order_by('name')
+    active_filters_count = sum(1 for v in [status_filter, priority_filter, category_filter] if v)
+
+    context = {
+        'page_obj': page_obj,
+        'complaints': page_obj.object_list,
+        'categories': categories,
+        'query': query,
+        'tab': tab,
+        'status_filter': status_filter,
+        'priority_filter': priority_filter,
+        'category_filter': category_filter,
+        'status_choices': Complaint.STATUS_CHOICES,
+        'priority_choices': Complaint.PRIORITY_CHOICES,
+        'total_count': complaints_qs.count(),
+        'active_count': active_count,
+        'resolved_count': resolved_count,
+        'all_count': all_count,
+        'active_filters_count': active_filters_count,
+    }
+    return render(request, 'dashboard/staff_complaint_list.html', context)
+
+
+@staff_required
+def staff_complaint_detail(request, complaint_id):
+    """
+    Staff detail view for an assigned work order.
+    Strictly scoped to assigned_to=request.user (returns 404 for unauthorized complaints).
+    Displays submitter info, photo proof, audit history, and transition forms.
+    """
+    complaint = get_object_or_404(
+        Complaint.objects.select_related('category', 'submitted_by__profile'),
+        complaint_id=complaint_id,
+        assigned_to=request.user
+    )
+
+    history = complaint.history.all().order_by('-changed_at').select_related('changed_by__profile')
+    progress_form = StaffProgressForm()
+    resolve_form = StaffResolutionForm()
+
+    context = {
+        'complaint': complaint,
+        'history': history,
+        'progress_form': progress_form,
+        'resolve_form': resolve_form,
+    }
+    return render(request, 'dashboard/staff_complaint_detail.html', context)
+
+
+@staff_required
+def staff_complaint_start_work(request, complaint_id):
+    """
+    Allows the assigned technician to start work on a task: ASSIGNED -> IN_PROGRESS.
+    Strictly scoped to assigned_to=request.user.
+    """
+    complaint = get_object_or_404(
+        Complaint,
+        complaint_id=complaint_id,
+        assigned_to=request.user
+    )
+
+    if request.method == 'POST':
+        if complaint.status != Complaint.STATUS_ASSIGNED:
+            messages.error(
+                request,
+                f"Complaint #{complaint.complaint_id} is in status '{complaint.get_status_display()}'. "
+                f"Only ASSIGNED complaints can be transitioned to IN_PROGRESS."
+            )
+            return redirect('dashboard:staff_complaint_detail', complaint_id=complaint.complaint_id)
+
+        remarks = request.POST.get('remarks', '').strip() or "Technician began repair work and diagnostics."
+
+        try:
+            complaint.transition_to(
+                new_status=Complaint.STATUS_IN_PROGRESS,
+                user=request.user,
+                remarks=remarks
+            )
+            messages.success(
+                request,
+                f"Work started on Complaint #{complaint.complaint_id}. Status updated to IN_PROGRESS."
+            )
+        except InvalidStatusTransitionError as e:
+            messages.error(request, f"Unable to start work: {e}")
+
+    return redirect('dashboard:staff_complaint_detail', complaint_id=complaint.complaint_id)
+
+
+@staff_required
+def staff_complaint_resolve(request, complaint_id):
+    """
+    Allows the assigned technician to mark a task as resolved: IN_PROGRESS -> RESOLVED.
+    Strictly requires non-empty resolution remarks and records resolved_at timestamp.
+    Strictly scoped to assigned_to=request.user.
+    """
+    complaint = get_object_or_404(
+        Complaint,
+        complaint_id=complaint_id,
+        assigned_to=request.user
+    )
+
+    if request.method == 'POST':
+        if complaint.status != Complaint.STATUS_IN_PROGRESS:
+            messages.error(
+                request,
+                f"Complaint #{complaint.complaint_id} is in status '{complaint.get_status_display()}'. "
+                f"Only IN_PROGRESS complaints can be marked as RESOLVED."
+            )
+            return redirect('dashboard:staff_complaint_detail', complaint_id=complaint.complaint_id)
+
+        form = StaffResolutionForm(request.POST)
+        if form.is_valid():
+            remarks = form.cleaned_data['remarks'].strip()
+            try:
+                complaint.transition_to(
+                    new_status=Complaint.STATUS_RESOLVED,
+                    user=request.user,
+                    remarks=remarks
+                )
+                messages.success(
+                    request,
+                    f"Complaint #{complaint.complaint_id} has been marked as RESOLVED. "
+                    f"Submitting student and administration have been notified for closure verification."
+                )
+            except InvalidStatusTransitionError as e:
+                messages.error(request, f"Unable to resolve complaint: {e}")
+        else:
+            messages.error(
+                request,
+                "Mandatory resolution remarks are required. Please describe the maintenance work done to resolve the issue."
+            )
+
+    return redirect('dashboard:staff_complaint_detail', complaint_id=complaint.complaint_id)
+
 
 
 # ==============================================================================

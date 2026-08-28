@@ -1,75 +1,251 @@
 {% extends 'base.html' %}
 
-{% block title %}Staff Dashboard - Campus Complaints{% endblock %}
+{% block title %}Staff Dashboard - Maintenance Work Orders{% endblock %}
 
 {% block content %}
 <div class="container py-4">
     <!-- Header -->
-    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-3 border-bottom">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-3 border-bottom gap-3">
         <div>
             <div class="d-flex align-items-center gap-2 mb-1">
-                <h2 class="fw-bold mb-0">Maintenance Staff Portal</h2>
-                <span class="badge bg-warning text-dark rounded-pill">STAFF</span>
+                <h2 class="fw-bold mb-0">Maintenance Technician Portal</h2>
+                <span class="badge bg-warning text-dark rounded-pill"><i class="bi bi-wrench-adjustable me-1"></i> STAFF</span>
             </div>
-            <p class="text-secondary mb-0">Welcome, {{ user.get_full_name|default:user.username }}! Review and action your assigned work orders.</p>
-        </div>
-        <div class="mt-3 mt-sm-0">
-            <span class="badge bg-light text-dark p-2 border">Staff ID: #{{ user.id }} &bull; Role: {{ user.profile.role }}</span>
-        </div>
-    </div>
-
-    <!-- Quick Stats Cards (Placeholder) -->
-    <div class="row g-3 mb-4">
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm p-3 rounded-4 bg-white">
-                <div class="d-flex align-items-center justify-content-between">
-                    <div>
-                        <div class="text-muted small fw-semibold">ASSIGNED WORK ORDERS</div>
-                        <h3 class="fw-bold mb-0 text-dark">0</h3>
-                    </div>
-                    <div class="bg-warning bg-opacity-10 text-warning p-3 rounded-3 fs-4">
-                        <i class="bi bi-clipboard2-check"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm p-3 rounded-4 bg-white">
-                <div class="d-flex align-items-center justify-content-between">
-                    <div>
-                        <div class="text-muted small fw-semibold">UNDER REPAIR (IN PROGRESS)</div>
-                        <h3 class="fw-bold mb-0 text-info">0</h3>
-                    </div>
-                    <div class="bg-info bg-opacity-10 text-info p-3 rounded-3 fs-4">
-                        <i class="bi bi-tools"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm p-3 rounded-4 bg-white">
-                <div class="d-flex align-items-center justify-content-between">
-                    <div>
-                        <div class="text-muted small fw-semibold">RESOLVED BY ME</div>
-                        <h3 class="fw-bold mb-0 text-success">0</h3>
-                    </div>
-                    <div class="bg-success bg-opacity-10 text-success p-3 rounded-3 fs-4">
-                        <i class="bi bi-check2-all"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Main Content Area Placeholder -->
-    <div class="card border-0 shadow-sm rounded-4 p-4 text-center">
-        <div class="py-5">
-            <i class="bi bi-tools text-secondary fs-1 mb-3 d-block"></i>
-            <h4 class="fw-bold">Assigned Maintenance Tasks</h4>
-            <p class="text-secondary max-w-500 mx-auto mb-3">
-                Assigned work orders, status updating (ASSIGNED &rarr; IN_PROGRESS &rarr; RESOLVED), and mandatory resolution remark submission will be populated in <strong>Phase 5</strong>.
+            <p class="text-secondary mb-0">
+                Welcome back, <strong>{{ user.get_full_name|default:user.username }}</strong>! Review, diagnose, and execute repairs on your assigned work orders.
             </p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'dashboard:staff_complaint_list' %}?tab=active" class="btn btn-warning rounded-pill px-4 fw-semibold text-dark shadow-sm">
+                <i class="bi bi-tools me-1"></i> Active Tasks ({{ active_tasks|length }})
+            </a>
+            <a href="{% url 'dashboard:staff_complaint_list' %}?tab=resolved" class="btn btn-outline-secondary rounded-pill px-3 fw-semibold">
+                <i class="bi bi-check2-all me-1"></i> Resolved History
+            </a>
+        </div>
+    </div>
+
+    <!-- Quick Stats Cards -->
+    <div class="row g-3 mb-4">
+        <!-- Total Assigned -->
+        <div class="col-6 col-md-3">
+            <a href="{% url 'dashboard:staff_complaint_list' %}?tab=all" class="text-decoration-none">
+                <div class="card border-0 shadow-sm p-3 rounded-4 bg-white h-100 transition-hover">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <div class="text-muted small fw-semibold">TOTAL ASSIGNED</div>
+                            <h3 class="fw-bold mb-0 text-dark">{{ total_assigned_count }}</h3>
+                        </div>
+                        <div class="bg-primary bg-opacity-10 text-primary p-3 rounded-3 fs-4">
+                            <i class="bi bi-clipboard2-check"></i>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- Pending (ASSIGNED - Not Started) -->
+        <div class="col-6 col-md-3">
+            <a href="{% url 'dashboard:staff_complaint_list' %}?status=ASSIGNED" class="text-decoration-none">
+                <div class="card border-0 shadow-sm p-3 rounded-4 bg-white h-100 transition-hover border-start border-danger border-4">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <div class="text-muted small fw-semibold">PENDING START</div>
+                            <h3 class="fw-bold mb-0 text-danger">{{ pending_assigned_count }}</h3>
+                        </div>
+                        <div class="bg-danger bg-opacity-10 text-danger p-3 rounded-3 fs-4">
+                            <i class="bi bi-hourglass-split"></i>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- Under Repair (IN_PROGRESS) -->
+        <div class="col-6 col-md-3">
+            <a href="{% url 'dashboard:staff_complaint_list' %}?status=IN_PROGRESS" class="text-decoration-none">
+                <div class="card border-0 shadow-sm p-3 rounded-4 bg-white h-100 transition-hover border-start border-warning border-4">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <div class="text-muted small fw-semibold">IN PROGRESS</div>
+                            <h3 class="fw-bold mb-0 text-warning">{{ in_progress_count }}</h3>
+                        </div>
+                        <div class="bg-warning bg-opacity-10 text-warning p-3 rounded-3 fs-4">
+                            <i class="bi bi-tools"></i>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- Resolved / Closed -->
+        <div class="col-6 col-md-3">
+            <a href="{% url 'dashboard:staff_complaint_list' %}?tab=resolved" class="text-decoration-none">
+                <div class="card border-0 shadow-sm p-3 rounded-4 bg-white h-100 transition-hover border-start border-success border-4">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <div class="text-muted small fw-semibold">RESOLVED BY ME</div>
+                            <h3 class="fw-bold mb-0 text-success">{{ resolved_count|add:closed_count }}</h3>
+                        </div>
+                        <div class="bg-success bg-opacity-10 text-success p-3 rounded-3 fs-4">
+                            <i class="bi bi-check2-circle"></i>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <!-- Active Tasks Queue -->
+    <div class="row g-4">
+        <!-- Main Active Work Orders (8 cols) -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+                <div class="card-header bg-white py-3 px-4 d-flex justify-content-between align-items-center border-bottom">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-warning text-dark p-2 rounded-circle"><i class="bi bi-tools"></i></span>
+                        <h5 class="fw-bold mb-0">Active Assigned Work Orders</h5>
+                    </div>
+                    {% if active_tasks %}
+                    <span class="badge bg-warning text-dark rounded-pill">{{ active_tasks|length }} In Queue</span>
+                    {% endif %}
+                </div>
+                <div class="card-body p-0">
+                    {% if active_tasks %}
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light small text-secondary">
+                                <tr>
+                                    <th class="ps-4">Ticket</th>
+                                    <th>Issue & Category</th>
+                                    <th>Location</th>
+                                    <th>Priority</th>
+                                    <th>Status</th>
+                                    <th class="text-end pe-4">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for task in active_tasks %}
+                                <tr>
+                                    <td class="ps-4 font-monospace fw-bold text-primary">
+                                        <a href="{% url 'dashboard:staff_complaint_detail' task.complaint_id %}" class="text-decoration-none">
+                                            #{{ task.complaint_id }}
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'dashboard:staff_complaint_detail' task.complaint_id %}" class="text-dark fw-semibold text-decoration-none d-block text-truncate" style="max-width: 220px;">
+                                            {{ task.title }}
+                                        </a>
+                                        <span class="badge bg-light text-secondary border font-monospace" style="font-size: 0.72rem;">
+                                            {{ task.category.name }}
+                                        </span>
+                                    </td>
+                                    <td class="small text-secondary text-truncate" style="max-width: 140px;">
+                                        <i class="bi bi-geo-alt me-1 text-muted"></i>{{ task.location }}
+                                    </td>
+                                    <td>
+                                        {% if task.priority == 'URGENT' %}
+                                            <span class="badge bg-danger rounded-pill px-2 py-1"><i class="bi bi-fire me-1"></i>Urgent</span>
+                                        {% elif task.priority == 'HIGH' %}
+                                            <span class="badge bg-warning text-dark rounded-pill px-2 py-1"><i class="bi bi-exclamation-triangle me-1"></i>High</span>
+                                        {% elif task.priority == 'MEDIUM' %}
+                                            <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-2 py-1">Medium</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-2 py-1">Low</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if task.status == 'ASSIGNED' %}
+                                            <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-2 py-1">
+                                                <i class="bi bi-hourglass me-1"></i>Assigned
+                                            </span>
+                                        {% elif task.status == 'IN_PROGRESS' %}
+                                            <span class="badge bg-warning bg-opacity-10 text-warning rounded-pill px-2 py-1">
+                                                <i class="bi bi-gear-wide-connected me-1"></i>In Progress
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end pe-4">
+                                        <a href="{% url 'dashboard:staff_complaint_detail' task.complaint_id %}" class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-semibold">
+                                            Manage &rarr;
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <div class="bg-success bg-opacity-10 text-success rounded-circle d-inline-flex p-3 mb-2">
+                            <i class="bi bi-check2-all fs-2"></i>
+                        </div>
+                        <h6 class="fw-bold mb-1">No Active Tasks!</h6>
+                        <p class="text-secondary small mb-0">You have no pending maintenance orders assigned to you.</p>
+                    </div>
+                    {% endif %}
+                </div>
+                {% if total_assigned_count > 8 %}
+                <div class="card-footer bg-light py-2 text-center border-top">
+                    <a href="{% url 'dashboard:staff_complaint_list' %}" class="small text-primary fw-semibold text-decoration-none">
+                        Browse all work orders &rarr;
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Recently Resolved History Sidebar (4 cols) -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+                <div class="card-header bg-white py-3 px-4 d-flex justify-content-between align-items-center border-bottom">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-success bg-opacity-10 text-success p-2 rounded-circle"><i class="bi bi-check2-circle"></i></span>
+                        <h5 class="fw-bold mb-0">Recently Resolved</h5>
+                    </div>
+                    <a href="{% url 'dashboard:staff_complaint_list' %}?tab=resolved" class="small text-primary fw-semibold text-decoration-none">
+                        All &rarr;
+                    </a>
+                </div>
+                <div class="card-body p-3">
+                    {% if recent_resolved %}
+                    <div class="list-group list-group-flush">
+                        {% for complaint in recent_resolved %}
+                        <a href="{% url 'dashboard:staff_complaint_detail' complaint.complaint_id %}" class="list-group-item list-group-item-action px-2 py-3 rounded-3 border-0 mb-1 d-flex justify-content-between align-items-center bg-light">
+                            <div class="me-2 text-truncate">
+                                <div class="font-monospace small fw-bold text-dark mb-1">#{{ complaint.complaint_id }}</div>
+                                <div class="fw-semibold text-dark text-truncate small">{{ complaint.title }}</div>
+                                <div class="text-secondary small" style="font-size: 0.75rem;">
+                                    <i class="bi bi-clock-history me-1"></i>Resolved: {{ complaint.resolved_at|date:"M d, H:i"|default:complaint.updated_at|date:"M d, H:i" }}
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge {% if complaint.status == 'CLOSED' %}bg-success{% else %}bg-info{% endif %} rounded-pill" style="font-size: 0.7rem;">
+                                    {{ complaint.get_status_display }}
+                                </span>
+                            </div>
+                        </a>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4 text-secondary small">
+                        <i class="bi bi-journal-check text-muted fs-3 d-block mb-1"></i>
+                        No resolved work orders in your recent history.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
         </div>
     </div>
 </div>
+
+<style>
+.transition-hover {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.transition-hover:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--brand-shadow-hover) !important;
+}
+</style>
 {% endblock %}

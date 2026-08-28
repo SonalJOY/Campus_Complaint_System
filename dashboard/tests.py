@@ -363,3 +363,213 @@ class AdminModuleTests(TestCase):
         res = self.client.post(self_toggle, follow=True)
         self.admin.refresh_from_db()
         self.assertTrue(self.admin.is_active)
+
+
+class StaffModuleTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+
+        # Create Staff 1
+        self.staff1 = User.objects.create_user(
+            username='staff_john',
+            email='john@campus.edu',
+            password='password123',
+            first_name='John',
+            last_name='Electrician'
+        )
+        self.staff1.profile.role = Profile.ROLE_STAFF
+        self.staff1.profile.phone = '+1-555-0111'
+        self.staff1.profile.save()
+
+        # Create Staff 2
+        self.staff2 = User.objects.create_user(
+            username='staff_mike',
+            email='mike@campus.edu',
+            password='password123',
+            first_name='Mike',
+            last_name='Plumber'
+        )
+        self.staff2.profile.role = Profile.ROLE_STAFF
+        self.staff2.profile.phone = '+1-555-0222'
+        self.staff2.profile.save()
+
+        # Create Student
+        self.student = User.objects.create_user(
+            username='student_alice',
+            email='alice@campus.edu',
+            password='password123',
+            first_name='Alice',
+            last_name='Smith'
+        )
+        self.student.profile.role = Profile.ROLE_STUDENT
+        self.student.profile.save()
+
+        # Category
+        self.category = Category.objects.create(name='Electrical', description='Wiring and lights')
+
+        # Complaints for Staff 1
+        self.c_assigned = Complaint.objects.create(
+            title="Broken switch in Room 201",
+            description="Switch sparking",
+            category=self.category,
+            location="Room 201",
+            priority=Complaint.PRIORITY_HIGH,
+            status=Complaint.STATUS_ASSIGNED,
+            submitted_by=self.student,
+            assigned_to=self.staff1
+        )
+
+        self.c_inprogress = Complaint.objects.create(
+            title="AC repair in Hall B",
+            description="Testing capacitor",
+            category=self.category,
+            location="Hall B",
+            priority=Complaint.PRIORITY_URGENT,
+            status=Complaint.STATUS_IN_PROGRESS,
+            submitted_by=self.student,
+            assigned_to=self.staff1
+        )
+
+        self.c_resolved = Complaint.objects.create(
+            title="Fluorescent bulb changed",
+            description="New tube installed",
+            category=self.category,
+            location="Room 102",
+            priority=Complaint.PRIORITY_LOW,
+            status=Complaint.STATUS_RESOLVED,
+            submitted_by=self.student,
+            assigned_to=self.staff1
+        )
+
+        # Complaint for Staff 2 (to test strict scoping)
+        self.c_staff2 = Complaint.objects.create(
+            title="Mike's private plumbing task",
+            description="Pipe leak",
+            category=self.category,
+            location="Washroom 4",
+            priority=Complaint.PRIORITY_MEDIUM,
+            status=Complaint.STATUS_ASSIGNED,
+            submitted_by=self.student,
+            assigned_to=self.staff2
+        )
+
+    def test_staff_dashboard_metrics_and_scoping(self):
+        self.client.login(username='staff_john', password='password123')
+        response = self.client.get(reverse('dashboard:staff_dashboard'))
+        self.assertEqual(response.status_code, 200)
+
+        # Counters should only count complaints assigned to staff1 (total 3)
+        self.assertEqual(response.context['total_assigned_count'], 3)
+        self.assertEqual(response.context['pending_assigned_count'], 1)
+        self.assertEqual(response.context['in_progress_count'], 1)
+        self.assertEqual(response.context['resolved_count'], 1)
+        self.assertEqual(response.context['high_priority_count'], 2)
+
+        # Active tasks queue contains c_inprogress and c_assigned, but NOT c_staff2
+        active_ids = [t.complaint_id for t in response.context['active_tasks']]
+        self.assertIn(self.c_assigned.complaint_id, active_ids)
+        self.assertIn(self.c_inprogress.complaint_id, active_ids)
+        self.assertNotIn(self.c_staff2.complaint_id, active_ids)
+
+    def test_staff_complaint_list_and_tabs(self):
+        self.client.login(username='staff_john', password='password123')
+        list_url = reverse('dashboard:staff_complaint_list')
+
+        # 1. Active tab (default): ASSIGNED + IN_PROGRESS (2 items)
+        res_active = self.client.get(list_url, {'tab': 'active'})
+        self.assertEqual(res_active.status_code, 200)
+        self.assertEqual(res_active.context['page_obj'].paginator.count, 2)
+
+        # 2. Resolved tab: RESOLVED (1 item)
+        res_resolved = self.client.get(list_url, {'tab': 'resolved'})
+        self.assertEqual(res_resolved.context['page_obj'].paginator.count, 1)
+        self.assertEqual(res_resolved.context['complaints'][0].complaint_id, self.c_resolved.complaint_id)
+
+        # 3. Search query
+        res_search = self.client.get(list_url, {'tab': 'all', 'q': 'switch'})
+        self.assertEqual(res_search.context['page_obj'].paginator.count, 1)
+        self.assertEqual(res_search.context['complaints'][0].complaint_id, self.c_assigned.complaint_id)
+
+    def test_strict_staff_authorization_and_scoping(self):
+        """
+        Verify that Staff 1 cannot view or modify Staff 2's assigned complaint (404 returned).
+        """
+        self.client.login(username='staff_john', password='password123')
+
+        # Attempt to view Staff 2's complaint detail
+        detail_url = reverse('dashboard:staff_complaint_detail', kwargs={'complaint_id': self.c_staff2.complaint_id})
+        res_detail = self.client.get(detail_url)
+        self.assertEqual(res_detail.status_code, 404)
+
+        # Attempt to start work on Staff 2's complaint
+        start_url = reverse('dashboard:staff_complaint_start_work', kwargs={'complaint_id': self.c_staff2.complaint_id})
+        res_start = self.client.post(start_url)
+        self.assertEqual(res_start.status_code, 404)
+
+        # Attempt to resolve Staff 2's complaint
+        resolve_url = reverse('dashboard:staff_complaint_resolve', kwargs={'complaint_id': self.c_staff2.complaint_id})
+        res_resolve = self.client.post(resolve_url, {'remarks': 'Hacked resolution'})
+        self.assertEqual(res_resolve.status_code, 404)
+
+    def test_staff_start_work_transition(self):
+        """
+        Verify ASSIGNED -> IN_PROGRESS transition by assigned technician.
+        """
+        self.client.login(username='staff_john', password='password123')
+        start_url = reverse('dashboard:staff_complaint_start_work', kwargs={'complaint_id': self.c_assigned.complaint_id})
+
+        res = self.client.post(start_url, {'remarks': 'Technician arrived on site and started repairs.'}, follow=True)
+        self.assertEqual(res.status_code, 200)
+
+        self.c_assigned.refresh_from_db()
+        self.assertEqual(self.c_assigned.status, Complaint.STATUS_IN_PROGRESS)
+
+        # History entry check
+        h = self.c_assigned.history.first()
+        self.assertEqual(h.old_status, Complaint.STATUS_ASSIGNED)
+        self.assertEqual(h.new_status, Complaint.STATUS_IN_PROGRESS)
+        self.assertEqual(h.changed_by, self.staff1)
+
+    def test_staff_resolve_transition_and_mandatory_remarks(self):
+        """
+        Verify IN_PROGRESS -> RESOLVED transition requires remarks and updates resolved_at.
+        """
+        self.client.login(username='staff_john', password='password123')
+        resolve_url = reverse('dashboard:staff_complaint_resolve', kwargs={'complaint_id': self.c_inprogress.complaint_id})
+
+        # 1. Empty remarks should fail
+        res_empty = self.client.post(resolve_url, {'remarks': '   '}, follow=True)
+        self.c_inprogress.refresh_from_db()
+        self.assertEqual(self.c_inprogress.status, Complaint.STATUS_IN_PROGRESS)
+
+        # 2. Valid remarks should succeed
+        res_valid = self.client.post(resolve_url, {
+            'remarks': 'Replaced 40uF capacitor, cleaned dust from coils, and verified cooling at 18C.'
+        }, follow=True)
+        self.assertEqual(res_valid.status_code, 200)
+
+        self.c_inprogress.refresh_from_db()
+        self.assertEqual(self.c_inprogress.status, Complaint.STATUS_RESOLVED)
+        self.assertIsNotNone(self.c_inprogress.resolved_at)
+
+        # History entry check
+        h = self.c_inprogress.history.first()
+        self.assertEqual(h.old_status, Complaint.STATUS_IN_PROGRESS)
+        self.assertEqual(h.new_status, Complaint.STATUS_RESOLVED)
+        self.assertEqual(h.changed_by, self.staff1)
+        self.assertIn('Replaced 40uF capacitor', h.remarks)
+
+    def test_student_blocked_from_staff_urls(self):
+        """
+        Verify student user receives HTTP 403 Forbidden on staff URLs.
+        """
+        self.client.login(username='student_alice', password='password123')
+        staff_urls = [
+            reverse('dashboard:staff_dashboard'),
+            reverse('dashboard:staff_complaint_list'),
+            reverse('dashboard:staff_complaint_detail', kwargs={'complaint_id': self.c_assigned.complaint_id}),
+        ]
+        for u in staff_urls:
+            res = self.client.get(u)
+            self.assertEqual(res.status_code, 403)
+

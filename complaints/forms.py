@@ -148,3 +148,35 @@ class AdminForceCloseForm(forms.Form):
         help_text="Optional remarks recorded in the permanent audit trail."
     )
 
+
+class StaffProgressForm(forms.Form):
+    """
+    Form for maintenance staff to transition a work order from ASSIGNED to IN_PROGRESS.
+    """
+    remarks = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'rows': 2,
+            'placeholder': 'Optional operational notes (e.g. Inspecting breaker box, gathering replacement parts)...'
+        }),
+        help_text="Optional notes recorded in the permanent audit trail upon starting work."
+    )
+
+
+class StaffResolutionForm(forms.Form):
+    """
+    Form for maintenance staff to mark a complaint as RESOLVED.
+    Mandatory resolution remarks detailing the fix are strictly required.
+    """
+    remarks = forms.CharField(
+        required=True,
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'rows': 4,
+            'placeholder': 'Describe the specific repairs performed, components replaced, or testing conducted to resolve the breakdown...'
+        }),
+        help_text="Mandatory. Please provide a clear summary of the maintenance work completed."
+    )
+
+
