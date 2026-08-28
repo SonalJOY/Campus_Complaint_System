@@ -67,11 +67,26 @@
                         {% elif user.profile.role == 'ADMIN' or user.is_superuser %}
                             <li class="nav-item">
                                 <a class="nav-link fw-medium text-danger" href="{% url 'dashboard:admin_dashboard' %}">
-                                    <i class="bi bi-shield-shaded me-1"></i> Admin Portal
+                                    <i class="bi bi-speedometer2 me-1"></i> Dashboard
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link fw-medium text-dark" href="{% url 'admin:index' %}" target="_blank">
+                                <a class="nav-link fw-medium text-dark" href="{% url 'dashboard:admin_complaint_list' %}">
+                                    <i class="bi bi-ticket-perforated me-1"></i> Complaints
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link fw-medium text-dark" href="{% url 'dashboard:admin_category_list' %}">
+                                    <i class="bi bi-grid me-1"></i> Categories
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link fw-medium text-dark" href="{% url 'dashboard:admin_user_list' %}">
+                                    <i class="bi bi-people me-1"></i> Users
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link fw-medium text-secondary" href="{% url 'admin:index' %}" target="_blank">
                                     <i class="bi bi-gear-fill me-1"></i> Django Admin
                                 </a>
                             </li>

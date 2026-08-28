@@ -98,3 +98,53 @@ class ComplaintCloseForm(forms.Form):
         }),
         help_text="Optional confirmation remarks before permanently closing the ticket."
     )
+
+
+class AdminComplaintManageForm(forms.Form):
+    """
+    Form for administrators to assign/reassign staff, change priority, and provide instructions.
+    """
+    assigned_to = forms.ModelChoiceField(
+        queryset=None,
+        required=False,
+        empty_label="-- Select Maintenance Staff Member --",
+        widget=forms.Select(attrs={'class': 'form-select form-select-lg'})
+    )
+    priority = forms.ChoiceField(
+        choices=Complaint.PRIORITY_CHOICES,
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    remarks = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'rows': 3,
+            'placeholder': 'Optional instructions or operational remarks for the assigned staff...'
+        }),
+        help_text="Recorded in the permanent audit history trail."
+    )
+
+    def __init__(self, *args, **kwargs):
+        from django.contrib.auth.models import User
+        super().__init__(*args, **kwargs)
+        # Populate only active STAFF members
+        self.fields['assigned_to'].queryset = User.objects.filter(
+            profile__role='STAFF',
+            is_active=True
+        ).order_by('first_name', 'username')
+
+
+class AdminForceCloseForm(forms.Form):
+    """
+    Form for administrators to force closure on a complaint.
+    """
+    remarks = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'rows': 3,
+            'placeholder': 'Administrative reason or verification notes for closing this ticket...'
+        }),
+        help_text="Optional remarks recorded in the permanent audit trail."
+    )
+

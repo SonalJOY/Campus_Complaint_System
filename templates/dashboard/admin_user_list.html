@@ -1,0 +1,304 @@
+{% extends 'base.html' %}
+
+{% block title %}User Management - Admin Portal{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-3 border-bottom gap-3">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <a href="{% url 'dashboard:admin_dashboard' %}" class="btn btn-outline-secondary btn-sm rounded-circle p-2 d-inline-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                    <i class="bi bi-arrow-left"></i>
+                </a>
+                <h2 class="fw-bold mb-0">Campus User Directory</h2>
+                <span class="badge bg-danger rounded-pill">ADMIN</span>
+            </div>
+            <p class="text-secondary mb-0">
+                Directory of registered students, maintenance technicians, and system administrators with role access control and account status toggles.
+            </p>
+        </div>
+        <div>
+            <a href="{% url 'admin:auth_user_add' %}" target="_blank" class="btn btn-outline-dark rounded-pill px-3 shadow-sm">
+                <i class="bi bi-person-plus-fill me-1"></i> Add User via Django Admin
+            </a>
+        </div>
+    </div>
+
+    <!-- Role KPI Chips -->
+    <div class="row g-3 mb-4">
+        <!-- Students -->
+        <div class="col-md-4">
+            <a href="{% url 'dashboard:admin_user_list' %}?role=STUDENT" class="text-decoration-none">
+                <div class="card border-0 shadow-sm p-3 rounded-4 bg-white {% if role_filter == 'STUDENT' %}border-start border-primary border-4{% endif %}">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <div class="text-muted small fw-semibold">STUDENTS</div>
+                            <h3 class="fw-bold mb-0 text-primary">{{ student_count }}</h3>
+                        </div>
+                        <div class="bg-primary bg-opacity-10 text-primary p-3 rounded-3 fs-4">
+                            <i class="bi bi-mortarboard-fill"></i>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- Staff -->
+        <div class="col-md-4">
+            <a href="{% url 'dashboard:admin_user_list' %}?role=STAFF" class="text-decoration-none">
+                <div class="card border-0 shadow-sm p-3 rounded-4 bg-white {% if role_filter == 'STAFF' %}border-start border-warning border-4{% endif %}">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <div class="text-muted small fw-semibold">MAINTENANCE STAFF</div>
+                            <h3 class="fw-bold mb-0 text-warning">{{ staff_count }}</h3>
+                        </div>
+                        <div class="bg-warning bg-opacity-10 text-warning p-3 rounded-3 fs-4">
+                            <i class="bi bi-wrench-adjustable"></i>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- Admins -->
+        <div class="col-md-4">
+            <a href="{% url 'dashboard:admin_user_list' %}?role=ADMIN" class="text-decoration-none">
+                <div class="card border-0 shadow-sm p-3 rounded-4 bg-white {% if role_filter == 'ADMIN' %}border-start border-danger border-4{% endif %}">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <div class="text-muted small fw-semibold">ADMINISTRATORS</div>
+                            <h3 class="fw-bold mb-0 text-danger">{{ admin_count }}</h3>
+                        </div>
+                        <div class="bg-danger bg-opacity-10 text-danger p-3 rounded-3 fs-4">
+                            <i class="bi bi-shield-shaded"></i>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <!-- Search & Filter Form -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <form method="GET" action="{% url 'dashboard:admin_user_list' %}" class="row g-3 align-items-end">
+                <div class="col-md-5">
+                    <label class="form-label small fw-semibold text-secondary mb-1">Search User</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                        <input type="text" name="q" value="{{ query }}" class="form-control border-start-0 ps-0" placeholder="Username, full name, email, phone...">
+                    </div>
+                </div>
+
+                <div class="col-md-3 col-6">
+                    <label class="form-label small fw-semibold text-secondary mb-1">Role</label>
+                    <select name="role" class="form-select">
+                        <option value="">All Roles</option>
+                        <option value="STUDENT" {% if role_filter == 'STUDENT' %}selected{% endif %}>Student</option>
+                        <option value="STAFF" {% if role_filter == 'STAFF' %}selected{% endif %}>Staff</option>
+                        <option value="ADMIN" {% if role_filter == 'ADMIN' %}selected{% endif %}>Admin</option>
+                    </select>
+                </div>
+
+                <div class="col-md-2 col-6">
+                    <label class="form-label small fw-semibold text-secondary mb-1">Account Status</label>
+                    <select name="status" class="form-select">
+                        <option value="">All Statuses</option>
+                        <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+                        <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Deactivated</option>
+                    </select>
+                </div>
+
+                <div class="col-md-2 d-flex gap-2">
+                    {% if query or role_filter or status_filter %}
+                    <a href="{% url 'dashboard:admin_user_list' %}" class="btn btn-outline-secondary rounded-pill px-3" title="Clear Filters">
+                        <i class="bi bi-x-circle"></i>
+                    </a>
+                    {% endif %}
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 flex-grow-1 fw-semibold" style="background-color: var(--brand-primary); border-color: var(--brand-primary);">
+                        Filter
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Users Table -->
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+        <div class="card-body p-0">
+            {% if users %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light small text-secondary">
+                        <tr>
+                            <th class="ps-4">User</th>
+                            <th>Contact Information</th>
+                            <th>Role</th>
+                            <th>Activity Metrics</th>
+                            <th>Status</th>
+                            <th>Joined Date</th>
+                            <th class="text-end pe-4">Account Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for u in users %}
+                        <tr>
+                            <!-- User Name & Avatar -->
+                            <td class="ps-4">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 40px; height: 40px;">
+                                        {{ u.first_name|first|default:u.username|first|upper }}
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold text-dark">{{ u.get_full_name|default:u.username }}</div>
+                                        <div class="text-muted small font-monospace">@{{ u.username }}</div>
+                                    </div>
+                                </div>
+                            </td>
+
+                            <!-- Contact -->
+                            <td class="small">
+                                <div class="text-dark"><i class="bi bi-envelope me-1 text-muted"></i>{{ u.email }}</div>
+                                {% if u.profile.phone %}
+                                <div class="text-secondary"><i class="bi bi-telephone me-1 text-muted"></i>{{ u.profile.phone }}</div>
+                                {% endif %}
+                            </td>
+
+                            <!-- Role -->
+                            <td>
+                                {% if u.profile.role == 'STUDENT' %}
+                                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary rounded-pill px-3 py-1 font-monospace">
+                                        <i class="bi bi-mortarboard me-1"></i>STUDENT
+                                    </span>
+                                {% elif u.profile.role == 'STAFF' %}
+                                    <span class="badge bg-warning bg-opacity-10 text-dark border border-warning rounded-pill px-3 py-1 font-monospace">
+                                        <i class="bi bi-wrench-adjustable me-1"></i>STAFF
+                                    </span>
+                                {% elif u.profile.role == 'ADMIN' or u.is_superuser %}
+                                    <span class="badge bg-danger bg-opacity-10 text-danger border border-danger rounded-pill px-3 py-1 font-monospace">
+                                        <i class="bi bi-shield-shaded me-1"></i>ADMIN
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-secondary rounded-pill px-3 py-1">User</span>
+                                {% endif %}
+                            </td>
+
+                            <!-- Activity Stats -->
+                            <td class="small">
+                                {% if u.profile.role == 'STUDENT' %}
+                                    <span class="text-secondary">
+                                        <i class="bi bi-folder2-open text-primary me-1"></i>{{ u.submitted_complaints.count }} Filed
+                                    </span>
+                                {% elif u.profile.role == 'STAFF' %}
+                                    <span class="text-secondary">
+                                        <i class="bi bi-tools text-warning me-1"></i>{{ u.assigned_complaints.count }} Assigned
+                                    </span>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+
+                            <!-- Status -->
+                            <td>
+                                {% if u.is_active %}
+                                    <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2 py-1">
+                                        <i class="bi bi-check-circle-fill me-1"></i>Active
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill px-2 py-1">
+                                        <i class="bi bi-slash-circle me-1"></i>Deactivated
+                                    </span>
+                                {% endif %}
+                            </td>
+
+                            <!-- Joined -->
+                            <td class="small text-secondary text-nowrap">
+                                {{ u.date_joined|date:"M d, Y" }}
+                            </td>
+
+                            <!-- Actions -->
+                            <td class="text-end pe-4">
+                                {% if u == user %}
+                                <span class="badge bg-light text-muted border" style="font-size: 0.75rem;">Current User</span>
+                                {% else %}
+                                <form method="POST" action="{% url 'dashboard:admin_user_toggle_status' u.id %}" class="d-inline">
+                                    {% csrf_token %}
+                                    {% if u.is_active %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3" onclick="return confirm('Deactivate account for \'{{ u.username }}\'? This user will not be able to log in.');">
+                                        <i class="bi bi-person-x me-1"></i> Deactivate
+                                    </button>
+                                    {% else %}
+                                    <button type="submit" class="btn btn-sm btn-outline-success rounded-pill px-3" onclick="return confirm('Re-activate account for \'{{ u.username }}\'?');">
+                                        <i class="bi bi-person-check me-1"></i> Activate
+                                    </button>
+                                    {% endif %}
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if page_obj.has_other_pages %}
+            <div class="card-footer bg-white py-3 px-4 d-flex justify-content-between align-items-center border-top">
+                <div class="small text-secondary">
+                    Showing page <strong>{{ page_obj.number }}</strong> of <strong>{{ page_obj.paginator.num_pages }}</strong>
+                </div>
+                <nav aria-label="Users table pagination">
+                    <ul class="pagination pagination-sm mb-0">
+                        {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link rounded-start-pill" href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">
+                                &laquo; Prev
+                            </a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled"><span class="page-link rounded-start-pill">&laquo; Prev</span></li>
+                        {% endif %}
+
+                        {% for num in page_obj.paginator.page_range %}
+                            {% if page_obj.number == num %}
+                            <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ num }}{% if query %}&q={{ query }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">
+                                    {{ num }}
+                                </a>
+                            </li>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link rounded-end-pill" href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">
+                                Next &raquo;
+                            </a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled"><span class="page-link rounded-end-pill">Next &raquo;</span></li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+            {% endif %}
+
+            {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-people text-secondary fs-1 d-block mb-2"></i>
+                <h5 class="fw-bold">No Users Found</h5>
+                <p class="text-secondary small mb-3">No user records matched the given search and filter parameters.</p>
+                {% if query or role_filter or status_filter %}
+                <a href="{% url 'dashboard:admin_user_list' %}" class="btn btn-outline-primary rounded-pill px-4">
+                    Reset Filters
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
