@@ -47,7 +47,7 @@ class ComplaintAdmin(admin.ModelAdmin):
         'submitted_by__username',
         'assigned_to__username'
     )
-    readonly_fields = ('complaint_id', 'created_at', 'updated_at', 'resolved_at', 'closed_at')
+    readonly_fields = ('complaint_id', 'status', 'created_at', 'updated_at', 'resolved_at', 'closed_at')
     inlines = [ComplaintHistoryInline]
     
     fieldsets = (

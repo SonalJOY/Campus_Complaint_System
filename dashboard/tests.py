@@ -688,3 +688,141 @@ class AnalyticsDashboardTests(TestCase):
         self.assertEqual(priority_map.get('Urgent'), 2)  # incremented from 1 to 2
 
 
+class SecurityAndValidationTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+
+        # Student 1
+        self.student1 = User.objects.create_user(username='student_sec1', email='s1@test.com', password='password123')
+        self.student1.profile.role = Profile.ROLE_STUDENT
+        self.student1.profile.save()
+
+        # Student 2
+        self.student2 = User.objects.create_user(username='student_sec2', email='s2@test.com', password='password123')
+        self.student2.profile.role = Profile.ROLE_STUDENT
+        self.student2.profile.save()
+
+        # Staff 1
+        self.staff1 = User.objects.create_user(username='staff_sec1', email='st1@test.com', password='password123')
+        self.staff1.profile.role = Profile.ROLE_STAFF
+        self.staff1.profile.save()
+
+        # Staff 2
+        self.staff2 = User.objects.create_user(username='staff_sec2', email='st2@test.com', password='password123')
+        self.staff2.profile.role = Profile.ROLE_STAFF
+        self.staff2.profile.save()
+
+        # Category
+        self.category = Category.objects.create(name='Security Test Category')
+
+        # Student 1 Complaint
+        self.c1 = Complaint.objects.create(
+            title="Student 1 Ticket",
+            description="desc",
+            category=self.category,
+            location="Location 1",
+            status=Complaint.STATUS_ASSIGNED,
+            submitted_by=self.student1,
+            assigned_to=self.staff1
+        )
+
+        # Student 2 Complaint (Resolved)
+        self.c2_resolved = Complaint.objects.create(
+            title="Student 2 Resolved Ticket",
+            description="desc",
+            category=self.category,
+            location="Location 2",
+            status=Complaint.STATUS_RESOLVED,
+            submitted_by=self.student2,
+            assigned_to=self.staff2
+        )
+
+    def test_student_cannot_tamper_administrative_fields_on_create(self):
+        """
+        Verify that submitting forged POST parameters (status=CLOSED, assigned_to=1)
+        are ignored and the ticket is strictly created as SUBMITTED with assigned_to=None.
+        """
+        self.client.login(username='student_sec1', password='password123')
+        url = reverse('complaints:student_complaint_create')
+
+        forged_payload = {
+            'title': 'Hacked Ticket',
+            'description': 'Attempting status escalation',
+            'category': self.category.id,
+            'location': 'Lab 1',
+            'priority': Complaint.PRIORITY_HIGH,
+            # Forged fields:
+            'status': Complaint.STATUS_CLOSED,
+            'assigned_to': self.staff1.id,
+            'submitted_by': self.student2.id,
+        }
+
+        res = self.client.post(url, forged_payload, follow=True)
+        self.assertEqual(res.status_code, 200)
+
+        created_ticket = Complaint.objects.get(title='Hacked Ticket')
+        self.assertEqual(created_ticket.status, Complaint.STATUS_SUBMITTED)  # NOT CLOSED
+        self.assertIsNone(created_ticket.assigned_to)  # NOT STAFF1
+        self.assertEqual(created_ticket.submitted_by, self.student1)  # NOT STUDENT2
+
+    def test_student_idor_defense(self):
+        """
+        Verify Student 1 cannot view or close Student 2's complaint (returns 404).
+        """
+        self.client.login(username='student_sec1', password='password123')
+
+        # Attempt to view Student 2's complaint
+        res_view = self.client.get(reverse('complaints:student_complaint_detail', kwargs={'complaint_id': self.c2_resolved.complaint_id}))
+        self.assertEqual(res_view.status_code, 404)
+
+        # Attempt to close Student 2's complaint
+        res_close = self.client.post(reverse('complaints:student_complaint_close', kwargs={'complaint_id': self.c2_resolved.complaint_id}), {'remarks': 'Hacked close'})
+        self.assertEqual(res_close.status_code, 404)
+
+    def test_staff_idor_defense(self):
+        """
+        Verify Staff 1 cannot view, start work, or resolve Staff 2's complaint (returns 404).
+        """
+        self.client.login(username='staff_sec1', password='password123')
+
+        res_view = self.client.get(reverse('dashboard:staff_complaint_detail', kwargs={'complaint_id': self.c2_resolved.complaint_id}))
+        self.assertEqual(res_view.status_code, 404)
+
+        res_start = self.client.post(reverse('dashboard:staff_complaint_start_work', kwargs={'complaint_id': self.c2_resolved.complaint_id}))
+        self.assertEqual(res_start.status_code, 404)
+
+        res_resolve = self.client.post(reverse('dashboard:staff_complaint_resolve', kwargs={'complaint_id': self.c2_resolved.complaint_id}), {'remarks': 'Hacked'})
+        self.assertEqual(res_resolve.status_code, 404)
+
+    def test_custom_error_handlers(self):
+        """
+        Verify custom 403, 404, and 500 error pages render cleanly.
+        """
+        from django.test import RequestFactory
+        from config.views import custom_403, custom_404, custom_500
+
+        factory = RequestFactory()
+
+        # 403
+        req_403 = factory.get('/')
+        req_403.user = self.student1
+        res_403 = custom_403(req_403)
+        self.assertEqual(res_403.status_code, 403)
+        self.assertIn(b'Access Restricted', res_403.content)
+
+        # 404
+        req_404 = factory.get('/')
+        req_404.user = self.student1
+        res_404 = custom_404(req_404)
+        self.assertEqual(res_404.status_code, 404)
+        self.assertIn(b'Resource Not Found', res_404.content)
+
+        # 500
+        req_500 = factory.get('/')
+        req_500.user = self.student1
+        res_500 = custom_500(req_500)
+        self.assertEqual(res_500.status_code, 500)
+        self.assertIn(b'Server Error', res_500.content)
+
+
+

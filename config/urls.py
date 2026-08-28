@@ -19,3 +19,7 @@ urlpatterns = [
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATICFILES_DIRS[0])
+
+handler403 = 'config.views.custom_403'
+handler404 = 'config.views.custom_404'
+handler500 = 'config.views.custom_500'
