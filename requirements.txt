@@ -7,3 +7,16 @@ Django>=5.0.0,<6.2.0
 Pillow>=10.0.0,<13.0.0
 asgiref>=3.8.0
 sqlparse>=0.5.0
+
+# Production Server & Asset Pipeline
+gunicorn>=21.2.0
+whitenoise>=6.6.0
+
+# Environment Configuration & Database Connectors
+python-dotenv>=1.0.0
+dj-database-url>=2.1.0
+psycopg2-binary>=2.9.9
+psycopg[binary]>=3.1.0
+
+# Cloud Storage Adapter & HTTP Client
+requests>=2.31.0

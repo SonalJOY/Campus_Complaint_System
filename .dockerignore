@@ -1,0 +1,51 @@
+# ==============================================================================
+# Docker Ignore Configuration - Campus Complaint & Resolution System
+# ==============================================================================
+
+# Python Bytecode and Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual Environments
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Version Control & IDE
+.git/
+.gitignore
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+.agents/
+.gemini/
+
+# Sensitive Environment & Secrets
+.env
+.env.*
+local_settings.py
+
+# Local Database Files (Preserve in host, use Supabase in Cloud)
+db.sqlite3
+db.sqlite3-journal
+
+# Local Collected Static & Media
+staticfiles/
+media/*
+!media/.gitkeep
+
+# Testing & Coverage
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
