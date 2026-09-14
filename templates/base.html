@@ -184,9 +184,30 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            document.querySelectorAll('[data-bs-toggle="dropdown"]').forEach(function (dropdownToggleEl) {
-                bootstrap.Dropdown.getOrCreateInstance(dropdownToggleEl);
-            });
+            var dropdownBtn = document.getElementById('userProfileDropdown');
+            if (dropdownBtn) {
+                var dropdownMenu = dropdownBtn.nextElementSibling && dropdownBtn.nextElementSibling.classList.contains('dropdown-menu')
+                    ? dropdownBtn.nextElementSibling
+                    : dropdownBtn.closest('.dropdown, .nav-item')?.querySelector('.dropdown-menu');
+
+                dropdownBtn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (dropdownMenu) {
+                        var isShown = dropdownMenu.classList.toggle('show');
+                        dropdownBtn.classList.toggle('show', isShown);
+                        dropdownBtn.setAttribute('aria-expanded', isShown ? 'true' : 'false');
+                    }
+                });
+
+                document.addEventListener('click', function (e) {
+                    if (dropdownMenu && !dropdownBtn.contains(e.target) && !dropdownMenu.contains(e.target)) {
+                        dropdownMenu.classList.remove('show');
+                        dropdownBtn.classList.remove('show');
+                        dropdownBtn.setAttribute('aria-expanded', 'false');
+                    }
+                });
+            }
         });
     </script>
     {% block extra_js %}{% endblock %}
