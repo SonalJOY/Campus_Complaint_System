@@ -107,17 +107,17 @@
                 </ul>
 
                 <!-- Auth Navigation Section -->
-                <div class="d-flex align-items-center gap-2">
+                <ul class="navbar-nav ms-auto align-items-center">
                     {% if user.is_authenticated %}
-                        <div class="dropdown">
-                            <button class="btn btn-light btn-sm rounded-pill px-3 dropdown-toggle d-flex align-items-center gap-2 border" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <li class="nav-item dropdown">
+                            <button class="btn btn-light btn-sm rounded-pill px-3 dropdown-toggle d-flex align-items-center gap-2 border" id="userProfileDropdown" type="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
                                 <i class="bi bi-person-circle text-primary"></i>
                                 <span class="fw-semibold">{{ user.username }}</span>
                                 <span class="badge {% if user.profile.role == 'STUDENT' %}bg-primary{% elif user.profile.role == 'STAFF' %}bg-warning text-dark{% else %}bg-danger{% endif %} rounded-pill font-monospace" style="font-size: 0.7rem;">
                                     {{ user.profile.role|default:"USER" }}
                                 </span>
                             </button>
-                            <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3">
+                            <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3 mt-2" aria-labelledby="userProfileDropdown">
                                 <li>
                                     <a class="dropdown-item py-2" href="{% url 'accounts:redirect_dashboard' %}">
                                         <i class="bi bi-speedometer2 me-2 text-primary"></i> My Dashboard
@@ -130,16 +130,18 @@
                                     </a>
                                 </li>
                             </ul>
-                        </div>
+                        </li>
                     {% else %}
-                        <a href="{% url 'accounts:login' %}" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-semibold">
-                            <i class="bi bi-box-arrow-in-right me-1"></i> Login
-                        </a>
-                        <a href="{% url 'accounts:register' %}" class="btn btn-primary btn-sm rounded-pill px-3 fw-semibold shadow-sm" style="background-color: var(--brand-primary); border-color: var(--brand-primary);">
-                            <i class="bi bi-person-plus me-1"></i> Student Register
-                        </a>
+                        <li class="nav-item d-flex gap-2">
+                            <a href="{% url 'accounts:login' %}" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-semibold">
+                                <i class="bi bi-box-arrow-in-right me-1"></i> Login
+                            </a>
+                            <a href="{% url 'accounts:register' %}" class="btn btn-primary btn-sm rounded-pill px-3 fw-semibold shadow-sm" style="background-color: var(--brand-primary); border-color: var(--brand-primary);">
+                                <i class="bi bi-person-plus me-1"></i> Student Register
+                            </a>
+                        </li>
                     {% endif %}
-                </div>
+                </ul>
             </div>
         </div>
     </nav>
